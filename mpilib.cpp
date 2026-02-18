@@ -21,7 +21,7 @@ void printlxn(const double *a, int size, int l, int n, int r)
 
 }
 
-int readarray(double *a, int n, char* filename){
+int readarray(double *a, int n, const char* filename){
         int _c=0;
         double el;
 
@@ -2172,6 +2172,95 @@ void init_matrix(double *a, int n, int m, int p, int k, double (*f)(int s,int n,
     }
 }
 
-int read_matrix(double *a, int n, int m, int p, int k, const char *name,double *buf, MPI_Comm com);
-void print_matrix(double *a, int n, int m, int p, int k, double *buf, int max_print, MPI_Comm com);
-int print_array(double *a, int n, int m, int printed_rows,int max_print);
+int read_matrix(double *a, int n, int m, int p, int k, const char *name,double *buf, MPI_Comm com)
+{
+    int main_k = 0;
+    FILE *fp = nullptr; int err = 0;
+
+    if(k == main_k)
+    {
+        fp = fopen(name,"r");
+        if(!fp) err = 1;
+    }
+    MPI_Bcast(&err,1,MPI_INT,main_k,com);
+
+    if(err) return err;
+
+    memset(buf,0,n*m*sizeof(double));
+
+    int b, max_b = (n + m -1)/m;
+
+    for(b = 0; b < max_b; b++)
+    {
+        int owner = b%p; //whos row now
+        int rows = (b*m + m <=n ? m: n - b*m);// rows in block row
+        int b_loc = b/p; // local block num
+
+        if(k == main_k)
+        {
+            err += readarray(buf,n*rows,name);
+            if(owner == main_k)
+                memcpy(a + b_loc*m*n,buf,n*rows);
+            else
+                MPI_Send(buf,n*rows,MPI_DOUBLE,owner,0,com);
+        }
+        else if (owner == k)
+        {
+            MPI_Status st;
+            MPI_Recv(a + b_loc*n*m,n*rows,MPI_DOUBLE,main_k,0,com,&st);
+        }
+    }
+    
+    if(k == main_k)
+    {
+        fclose(fp);
+        fp = nullptr;
+    }
+    MPI_Bcast(&err,1,MPI_INT,main_k,com);
+    if(err) return err;
+
+    return 0;
+}
+void print_matrix(double *a, int n, int m, int p, int k, double *buf/*nxm size*/, int max_print, MPI_Comm com)
+{
+    int main_k = 0;
+    int b, max_b = (n + m -1)/m;
+    int printed_rows = 0;
+
+    for(b = 0; b < max_b; b++)
+    {
+        int owner = b%p, b_loc = b/p;
+        int rows = min(m,n - b*m);
+
+        if(k == main_k)
+        {
+            if(owner == main_k)
+                printed_rows += print_array(a + b_loc*n*m,n,rows,printed_rows,max_print);
+            else
+            {
+                MPI_Status st;
+                MPI_Recv(buf, n*rows, MPI_DOUBLE, owner,0,com,&st);
+                printed_rows += print_array(buf,n,rows,printed_rows,max_print);
+            }
+        }
+            else if(k == owner)
+                MPI_Send(a + b_loc*m*n, n*rows,MPI_DOUBLE,main_k,0,com);
+        
+    }
+}
+int print_array(double *a, int n, int m, int printed_rows,int max_print)
+{
+    if(printed_rows >= max_print) return 0;
+    int p_n = (n > max_print ? max_print : n);
+    int p_m = (printed_rows + m <= max_print ? m:max_print - printed_rows);
+
+    for(int i = 0; i < p_m; i++)
+    {
+        for(int j = 0; j < p_n; j++)
+        {
+            printf(" %10.3e", a[i*n + j]);
+        }
+        printf("\n");
+    }
+    return p_m;
+}

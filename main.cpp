@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     // p = (n/m > p ? p:n/m);
    
 
-    if(argc == 6) filename = argv[5];
+    
 
 
 
@@ -67,7 +67,16 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("n = %d m = %d r = %d s = %d p = %d k = %d\n",n,m,r,s,p,k);
+    //check
+    // if(argc == 6) 
+    // {
+    //     filename = argv[5];
+    //     printf("n = %d m = %d r = %d s = %d p = %d k = %d file = %s\n",n,m,r,s,p,k,filename);
+    // }
+    // else 
+    //     printf("n = %d m = %d r = %d s = %d p = %d k = %d\n",n,m,r,s,p,k);
+
+    
 
    
 
@@ -75,6 +84,8 @@ int main(int argc, char *argv[])
     b = new double[n];  // create vector b
     x = new double[n];  // create vector x
     realx = new double[n];  // create vector real x
+    init_matrix(a,n,m,p,k,&f,s);
+    // printf("a[%d,%d] = %10.3e\n",k,0,a[k*n+0]);
     
     
     

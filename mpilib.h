@@ -19,7 +19,7 @@ using namespace std;
 
 
 void printlxn(const double *a, int size, int l, int n, int r);
-int readarray(double *a, int n, char* filename);
+int readarray(double *a, int n, const char* filename);
 double f (int s , int n , int i , int j);
 void init(double *a, double (*f)(int,int,int,int), int n, int s);
 int solution(int n, int m, double *a, double *b, double *x,
