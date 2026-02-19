@@ -20,6 +20,7 @@ using namespace std;
 
 void printlxn(const double *a, int size, int l, int n, int r);
 int readarray(double *a, int n, const char* filename);
+int read_array(FILE *fp,double *buf, double totalsize);
 double f (int s , int n , int i , int j);
 void init(double *a, double (*f)(int,int,int,int), int n, int s);
 int solution(int n, int m, double *a, double *b, double *x,
@@ -68,8 +69,11 @@ int get_block_rows(int n, int m, int p, int k);
 int get_max_block_rows(int n, int m, int p);
 int get_rows(int n, int m, int p, int k);
 void init_matrix(double *a, int n, int m, int p, int k, double (*f)(int,int,int,int),int s);
+void init_vector_b(double *a,double *b,int n, int m, int p, int k);
 int read_matrix(double *a, int n, int m, int p, int k, const char *name,double *buf, MPI_Comm com);
 void print_matrix(double *a, int n, int m, int p, int k, double *buf, int max_print, MPI_Comm com);
+void print_vector(double *b,int n,int m, int p, int k,double *buf,MPI_Comm com);
 int print_array(double *a, int n, int m, int printed_rows,int max_print);
+void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, int p,MPI_Comm com);
 
 #endif

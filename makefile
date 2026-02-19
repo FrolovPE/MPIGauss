@@ -24,7 +24,7 @@ mainzip:
 	zip Frolov_PS.zip $(obj) makefile 
 
 zip:
-	zip pll.zip $(obj) makefile  
+	zip mpig.zip $(obj) makefile  
 
 
 gp.out: $(obj)

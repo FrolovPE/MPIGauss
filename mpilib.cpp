@@ -72,6 +72,30 @@ int readarray(double *a, int n, const char* filename){
         return 0;
     }
 
+int read_array(FILE *fp,double *buf, double totalsize)
+{
+    double x{};
+    int counter{};
+    if(!fp)
+    {
+        printf("cant open file\n");
+        return -1;
+    }
+
+    while(counter < totalsize && fscanf(fp,"%lf",&x)==1)
+    {
+        buf[counter] = x;
+        counter++;
+        
+    }
+    // if(counter < totalsize)
+    // {
+    //     printf("bad size\n");
+    //     return -1;
+    // }
+    return 0;
+}
+
 
 double f (int s , int n , int i , int j)
 {
@@ -2109,16 +2133,16 @@ int g2l(int n, int m, int k, int p, int i_glob)
     return i_loc_m*m + i_glob%m;
 }
 
-int l2g_block(int n, int m, int k, int p, int i_loc)
+int l2g_block(int n, int m, int k, int p, int i_loc_m)
 {
-    int i_loc_m = i_loc/m;
+    // int i_loc_m = i_loc/m;
     return  i_loc_m*p + k;
 
 }
 
-int g2l_block(int n, int m, int k, int p, int i_glob)
+int g2l_block(int n, int m, int k, int p, int i_glob_m)
 {
-    int i_glob_m = i_glob/m;
+    // int i_glob_m = i_glob/m;
     return i_glob_m%p;
     
 }
@@ -2164,23 +2188,47 @@ void init_matrix(double *a, int n, int m, int p, int k, double (*f)(int s,int n,
     for(i_loc = 0; i_loc < rows; i_loc++)
     {
         i_glob = l2g(n,m,k,p,i_loc);
-        for(j_loc = 0; j_loc < rows; j_loc++)
+        for(j_loc = 0; j_loc < n; j_loc++)
         {
             j_glob = j_loc;
-            a[i_glob*n + j_glob] = f(s,n,i_glob,j_glob);
+            a[i_loc*n + j_loc] = f(s,n,i_glob,j_glob);
         }
     }
+}
+
+void init_vector_b(double *a,double *b,int n, int m, int p, int k)
+{
+    int i_loc,j_loc,rows;
+    rows = get_rows(n,m,p,k);
+
+    for(i_loc = 0; i_loc < rows; i_loc++)
+    {
+        for(j_loc = 0; j_loc < n; j_loc++)
+        {
+            b[i_loc] += a[i_loc * n + j_loc] * ((j_loc+1)%2);
+            // printf("a[i_loc * n + j_loc] = %10.3e\n",a[i_loc * n + j_loc]);
+        }
+    }
+    // printf("Proc %d ",k);
+    // for(i_loc = 0; i_loc < rows; i_loc++)
+    //     printf("%10.3e ",b[i_loc]);
+    // printf("\n");
 }
 
 int read_matrix(double *a, int n, int m, int p, int k, const char *name,double *buf, MPI_Comm com)
 {
     int main_k = 0;
     FILE *fp = nullptr; int err = 0;
+    // if (k == main_k) printf("Name in read_matrix %s\n",name);
 
     if(k == main_k)
     {
         fp = fopen(name,"r");
-        if(!fp) err = 1;
+        if(!fp) 
+        {
+            err = 1;
+            printf("have error bad file proc %d\n",k);
+        }
     }
     MPI_Bcast(&err,1,MPI_INT,main_k,com);
 
@@ -2198,9 +2246,18 @@ int read_matrix(double *a, int n, int m, int p, int k, const char *name,double *
 
         if(k == main_k)
         {
-            err += readarray(buf,n*rows,name);
+            err += read_array(fp,buf,n*rows);
+            // printf("Printing buf\n");
+            // for(int i = 0; i < rows; i++)
+            // {
+            //     for(int j = 0; j < n; j++)
+            //         {
+            //             printf("%10.3e ",buf[i*n+j]);
+            //         }
+            //         printf("\n");
+            // }
             if(owner == main_k)
-                memcpy(a + b_loc*m*n,buf,n*rows);
+                memcpy(a + b_loc*m*n,buf,n*rows*sizeof(double));
             else
                 MPI_Send(buf,n*rows,MPI_DOUBLE,owner,0,com);
         }
@@ -2248,6 +2305,42 @@ void print_matrix(double *a, int n, int m, int p, int k, double *buf/*nxm size*/
         
     }
 }
+
+void print_vector(double *b,int n,int m, int p, int k,double *buf,MPI_Comm com)
+{
+    int main_k = 0;
+    int i_glob,i_glob_m,i_loc,rows;
+    int bl, max_b = (n + m -1)/m;
+
+
+    for(bl = 0; bl < max_b; bl++)
+    {
+        int owner = bl%p, b_loc = bl/p;
+        int rows = min(m,n - bl*m);
+
+        if(k == main_k)
+        {
+            if(owner == main_k)
+                {
+                    for(i_loc = 0; i_loc < rows;i_loc++)
+                        printf("%10.3e ",b[i_loc]);
+                }
+            else
+            {
+                MPI_Status st;
+                MPI_Recv(buf,rows, MPI_DOUBLE, owner,0,com,&st);
+                for(i_loc = 0; i_loc < rows;i_loc++)
+                        printf("%10.3e ",buf[i_loc]);
+            }
+        }
+        else if(k == owner)
+        {
+            MPI_Send(b,rows,MPI_DOUBLE,main_k,0,com);
+        }
+        if(bl == max_b-1) printf("\n");
+    }
+}
+
 int print_array(double *a, int n, int m, int printed_rows,int max_print)
 {
     if(printed_rows >= max_print) return 0;
@@ -2263,4 +2356,48 @@ int print_array(double *a, int n, int m, int printed_rows,int max_print)
         printf("\n");
     }
     return p_m;
+}
+
+void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, int p,MPI_Comm com)
+{
+    int b_rows = get_block_rows(n,m,p,k);
+    int rows = get_rows(n,m,p,k);
+    int max_b_rows = get_max_block_rows(n,m,p);
+    int b, max_b = (n + m - 1)/m;
+    int dst = (k-1+p)%p;
+    int src = (k+1+p)%p;
+
+    memset(c,0,rows*sizeof(double));
+
+    for(int s = 0; s < p; s++)//resend loop
+    {
+        int sk = (k+s)%p; // whos data now in vector b
+        int sk_rows = get_rows(n,m,p,sk);
+        int sk_b_rows = get_block_rows(n,m,p,sk);
+
+        for(int i = 0; i < b_rows; i++)//loop po svoim strokam
+        {
+            int i_glob_m = l2g_block(n,m,k,p,i);
+            int h = (i_glob_m*m + m < n ? m:n-i_glob_m*m);
+
+            for(int sk_i = 0; sk_i < sk_b_rows; sk_i++)
+            {
+                int i_s_glob = l2g_block(n,m,sk,p,sk_i);
+                int w = (i_s_glob*m + m < n ? m:n-i_s_glob*m);
+
+                for(int ii = 0; ii < h; ii++)
+                {
+                    double sum = 0;
+                    for(int jj = 0; jj < w; jj++)
+                    {
+                        sum += a[(i*m+ii)*m + l2g_block(n,m,k,p,sk_i)*m + jj]*bvec[sk_i*m + jj];
+                    }
+                    c[i*m + ii] += sum;
+                }
+            }
+        }
+        MPI_Status st;
+        MPI_Sendrecv_replace(bvec,max_b_rows*m,MPI_DOUBLE,dst,0,src,0,com,&st);
+
+    }
 }
