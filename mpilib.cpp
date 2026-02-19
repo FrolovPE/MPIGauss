@@ -221,6 +221,39 @@ void residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx
     
 }
 
+void mpi_residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx,int n,int m,int p, int k, double *Ax, double *Ax_b, double *x_realx,MPI_Comm com)
+{
+    /*dopisat' */matrix_mult_vector(a,x,Ax,n,m,k,p,com);// mat_x_vector(Ax,a,x,n);// double *Ax = mat_x_vector(a,x,n);
+    vectorsub(Ax_b,Ax,b,n);// double *Ax_b = vectorsub( Ax , b, n);
+    vectorsub(x_realx,x,realx,n);// double *x_realx = vectorsub( x , realx, n);
+
+    // cout<<"\nVector Ax :"<<endl;
+    // for(int i =0 ; i<n ; i++)
+    // {
+    //     printf("%10.3e ",Ax[i]);
+    // }
+
+    // cout<<"\nVector b :"<<endl;
+    // for(int i =0 ; i<n ; i++)
+    // {
+    //     printf("%10.3e ",b[i]);
+    // }
+
+    // cout<<"\nVector Ax_b :"<<endl;
+    // for(int i =0 ; i<n ; i++)
+    // {
+    //     printf("%10.3e ",Ax_b[i]);
+    // }
+
+    r1 = vectornorm(Ax_b ,  n) / vectornorm(b,n);
+    r2 = vectornorm(x_realx ,  n) / vectornorm(realx,n);
+
+    // delete []Ax;
+    // delete []Ax_b;
+    // delete []x_realx;
+    
+}
+
 
 
 
@@ -2390,7 +2423,7 @@ void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, 
                     double sum = 0;
                     for(int jj = 0; jj < w; jj++)
                     {
-                        sum += a[(i*m+ii)*m + l2g_block(n,m,k,p,sk_i)*m + jj]*bvec[sk_i*m + jj];
+                        sum += a[(i*m+ii)*n + i_s_glob*m + jj]*bvec[sk_i*m + jj];
                     }
                     c[i*m + ii] += sum;
                 }

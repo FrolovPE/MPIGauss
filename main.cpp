@@ -89,15 +89,17 @@ int main(int argc, char *argv[])
     a = new double[n*loc_rows]; //create matrix a
     b = new double[loc_rows];  // create vector b
     x = new double[loc_rows];  // create vector x
+    realx = new double[loc_rows];  // create vector real x
     buf = new double[n*m]; //block row
     vecbuf = new double[m]; // block vector
     resvec = new double[n];
-    realx = new double[loc_rows];  // create vector real x
-    // for(int i_loc = 0; i_loc < loc_rows; i_loc++)
-    // {
-    //     int i_glob = l2g(n,m,kk,p,i_loc);
-    //     realx[i_loc] = (i_glob+1)%2;
-    // }
+    
+    for(int i_loc = 0; i_loc < loc_rows; i_loc++)
+    {
+        int i_glob = l2g(n,m,kk,p,i_loc);
+        realx[i_loc] = (i_glob+1)%2;
+        x[i_loc] = (i_glob+1)%2; // for template, later comment
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -113,19 +115,13 @@ int main(int argc, char *argv[])
     print_vector(b,n,m,p,kk,vecbuf,MPI_COMM_WORLD);
     // print_array(b,n,1,1,r);
 
-    // if(kk == main_kk) printf("Vector realx:\n");
-    // print_vector(realx,n,m,p,kk,vecbuf,MPI_COMM_WORLD);
+    if(kk == main_kk) printf("Vector realx:\n");
+    print_vector(realx,n,m,p,kk,vecbuf,MPI_COMM_WORLD);
 
-    // matrix_mult_vector(a,b,resvec,n,m,kk,p,MPI_COMM_WORLD);
-    // if(kk == main_kk) 
-    // {
-    //     printf("Res mat_mult_vec:\n");
-    //     for(int i = 0; i < n; i++)
-    //     {
-    //         printf("%10.3e ",resvec[i]);
-    //     }
-    //     printf("\n");
-    // }
+    // matrix_mult_vector(a,realx,resvec,n,m,kk,p,MPI_COMM_WORLD);
+
+    // if(kk == main_kk) printf("Res mat_mult_vec:\n");
+    // print_vector(resvec,n,m,p,kk,vecbuf,MPI_COMM_WORLD);
     
     
     
@@ -171,8 +167,8 @@ int main(int argc, char *argv[])
     double *Ax_b = new double[n];//vectorsub( Ax , b, n);
     double *x_realx = new double[n];//vectorsub( x , realx, n);
 
-    for(int i = 0 ; i < n; i++)
-        realx[i] = (i+1)%2;
+    // for(int i = 0 ; i < n; i++)
+    //     realx[i] = (i+1)%2;
     
 
     // residuals(r1,r2,a,b,x,realx,n,Ax,Ax_b,x_realx);
