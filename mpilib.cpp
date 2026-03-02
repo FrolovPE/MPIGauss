@@ -2832,8 +2832,23 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
         for(int ii_loc_m = 0; ii_loc_m < get_block_rows(n,m,p,kk); ii_loc_m++)
         {
-            get_block(a,block_mm,n,m,ii_loc_m,i_glob_m);
-            get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+            int ii_glob_m = l2g_block(kk,p,ii_loc_m);
+
+            if(ii_glob_m <= i_glob_m) continue;//если номер локальной строки в глобальной нумерации <= текущего глобального номера то пропускаем
+
+            if(ii_glob_m != k_bl + is_l - 1)
+            {
+                get_block(buf,block_mm,n,m,0,i_glob_m);
+                // get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+
+                memset(tmpblock_mm,0, m*m*sizeof(double));
+                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+
+                //должны переслать часть вектора b из owner всем get_vec_block(b,vecb_m,n,m,i_loc_m);//вычитание из вектора b block_mm*b
+                // get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+                // vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
+                // set_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+            }
         }
         
 
