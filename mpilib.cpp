@@ -2223,7 +2223,7 @@ int l2g_block(/*int n, int m,*/ int k, int p, int i_loc_m)
 int g2l_block(/*int n, int m, int k,*/ int p, int i_glob_m)
 {
     // int i_glob_m = i_glob/m;
-    return i_glob_m%p;
+    return i_glob_m/p;
     
 }
 
@@ -2503,18 +2503,21 @@ void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, 
     }
 }
 
-void get_block_row(double *a,double *buf,int n, int m, int p,int kk,int i_loc_m)
+void get_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int i_loc_m)
 {
-    memset(buf,0,m*n*sizeof(double));
+    int i_glob_m = l2g_block(kk,p,i_loc_m);
+    int owner = i_glob_m%p;
+    memset(buf,0,p_m*n*sizeof(double));
+    if(owner != kk) return;
 
     double *start = a + i_loc_m*m*n;
-    int last = get_block_rows(n,m,p,kk)-1;
-    int lastnum = l2g_block(kk,p,last);
-    int b = n/m;
-    int p_m = (lastnum == l2g_block(kk,p,i_loc_m) ? n-b*m:m);
+    // int last = get_block_rows(n,p_m,p,kk)-1;
+    // int lastnum = l2g_block(kk,p,last);
+    // int b = n/m;
+    // int p_m = (lastnum == l2g_block(kk,p,i_loc_m) ? n-b*m:m);
 
-    if(p_m != m)
-        printf("in get_block_row p_m = %d proc %d owner = %d i_loc_m = %d\n",p_m,kk,l2g_block(kk,p,i_loc_m)%p,i_loc_m);
+    // if(p_m != m)
+    //     printf("in get_block_row p_m = %d proc %d owner = %d i_loc_m = %d\n",p_m,kk,l2g_block(kk,p,i_loc_m)%p,i_loc_m);
     
 
     for(int i = 0; i < p_m; i++)
@@ -2570,26 +2573,43 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     
     // if(kk == main_kk) printf("Norm of matrix A: %10.3e\n",N);
 
-    int k = n/m, l = n - k*m;
+    int k_bl = n/m, l = n - k_bl*m;
     l=l;
     int is_l = (l==0 ? 0:1);
-    memset(colsw,0,k*sizeof(int));
+    memset(colsw,0,k_bl*sizeof(int));
     int b_loc_rows = get_block_rows(n,m,p,kk);
     int owner;
     DI main_block{};
     (void)b_loc_rows;
     main_block=main_block;
+    double eps = 1e-15*N;
+    MPI_Status st;
+    eps=eps;
 
-    for(int i_glob_m = 0; i_glob_m < k+is_l; i_glob_m++)
+
+    // printf("Printing my loc matrix proc %d:\n",kk);
+    // for(int i = 0; i < get_rows(n,m,p,kk); i++)
+    // {
+    //     for(int j = 0; j < n; j++)
+    //     {
+    //         printf(" %10.3e",a[i*n+j]);
+    //     }
+    //     printf("\n");
+    // }
+
+    for(int i_glob_m = 0; i_glob_m < k_bl+is_l; i_glob_m++)
     {
         owner = i_glob_m%p;
         int i_loc_m = g2l_block(p,i_glob_m);
-        int p_m = (i_glob_m == k ? l:m);
+        int p_m = (i_glob_m == k_bl ? l:m);
         
-        get_block_row(a,buf,n,m,p,owner,i_loc_m);
-        if(kk == owner)
+        get_block_row(a,buf,n,m,p_m,p,owner,i_loc_m);
+        
+        MPI_Bcast(buf,n*p_m,MPI_DOUBLE,owner,MPI_COMM_WORLD);//send block row to all
+
+        if(kk == main_kk)
         {
-            printf("Owner %d printing buf:\n",owner);
+            printf("Owner %d printing buf i_loc_m = %d i_glob_m = %d:\n",owner,i_loc_m,i_glob_m);
             for(int i = 0; i < p_m; i++)
             {
                 for(int j = 0; j < n; j++)
@@ -2599,28 +2619,50 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 printf("\n");
             }
         }
-        MPI_Bcast(buf,n*p_m,MPI_DOUBLE,owner,MPI_COMM_WORLD);//send block row to all
-        // if(kk != owner)
-        // {
-        //     printf("Printing buf after send proc %d owner = %d:\n",kk,owner);
-        //     for(int i = 0; i < p_m; i++)
-        //     {
-        //         for(int j = 0; j < n; j++)
-        //         {
-        //         printf(" %10.3e",buf[i*n+j]);
-        //         }
-        //         printf("\n");
-        //     }
-        // }
         
-        // else
-        // {
-        //     MPI_Status st;
-        //     MPI_Recv(buf,n*p_m,MPI_DOUBLE,owner,0,MPI_COMM_WORLD,&st);
-        // }
-        main_block.norm = 1e64;
-        main_block.num = -1;
-    }
+        main_block.norm = 1e64; // сюда будем класть 1/norm
+        main_block.num = -1; 
+        
+        if(i_glob_m != k_bl)
+        {
+            for(int j_loc_m = i_glob_m + kk; j_loc_m < k_bl; j_loc_m += p)
+            {
+                if(owner == kk) 
+                {
+                    get_block(a,block_mm,n,m,i_loc_m,j_loc_m);
+                    // printf("Block[%d,%d] proc %d owner %d in row %d\n",i_loc_m,j_loc_m,kk,owner,i_glob_m);
+                    // printlxn(block_mm,m,m,m,m);
+                }
+                else
+                {
+                    get_block(buf,block_mm,n,m,0,j_loc_m);
+                    // printf("Block[%d,%d] proc %d owner %d in row %d\n",0,j_loc_m,kk,owner,i_glob_m);
+                    // printlxn(block_mm,m,m,m,m);
+                }
+
+                // if(kk == main_kk)
+                // {
+                //     if(owner == kk)
+                //     {
+                //         printf("Block[%d,%d] proc %d owner %d in row %d\n",i_loc_m,j_loc_m,kk,owner,i_glob_m);
+                //         printlxn(block_mm,m,m,m,m);
+                //     }
+                //     else
+                //     {
+                //         MPI_Recv(tmpblock_mm,m*m,MPI_DOUBLE,owner,0,MPI_COMM_WORLD,&st);
+                //         printf("Block[%d,%d] proc %d owner %d in row %d\n",0,j_loc_m,kk,owner,i_glob_m);
+                //         printlxn(tmpblock_mm,m,m,m,m);
+                //     }
+                // }
+                // else if(kk == owner)
+                // {
+                //     MPI_Send(block_mm,m*m,MPI_DOUBLE,main_kk,0,MPI_COMM_WORLD);
+                // }
+
+            }
+        }
+
+    }//end straight algo
     
 
     return 0;

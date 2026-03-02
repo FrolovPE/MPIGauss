@@ -88,5 +88,5 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,double *b
     double *invblock_ll,double *diagblock_mm,
     int *colsw,double *vecb_m,double *vecb_l,
     double *tmpblock_mm,double *tmpblock_ml,double *tmpblock_ml1,double *tmpblock_ll,double *tmpvecb_m,double *tmpvecb_l,MPI_Comm com);
-void get_block_row(double *a,double *buf,int n, int m, int p,int kk,int i_loc_m);
+void get_block_row(double *a,double *buf,int n, int m ,int p_m, int p,int kk,int i_loc_m);
 #endif
