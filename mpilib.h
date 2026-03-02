@@ -84,9 +84,10 @@ void print_matrix(double *a, int n, int m, int p, int k, double *buf, int max_pr
 void print_vector(double *b,int n,int m, int p, int k,double *buf,int max_print,MPI_Comm com);
 int print_array(double *a, int n, int m, int printed_rows,int max_print);
 void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, int p,MPI_Comm com);
-int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,double *buf,double *vecbuf,double *block_mm, double *block_ml, double *block_ll,double *invblock_mm, double *diaginvblock_mm, 
+int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,double *buf,double *tmpbuf,double *vecbuf,double *block_mm, double *block_ml, double *block_ll,double *invblock_mm, double *diaginvblock_mm, 
     double *invblock_ll,double *diagblock_mm,
     int *colsw,double *vecb_m,double *vecb_l,
     double *tmpblock_mm,double *tmpblock_ml,double *tmpblock_ml1,double *tmpblock_ll,double *tmpvecb_m,double *tmpvecb_l,MPI_Comm com);
-void get_block_row(double *a,double *buf,int n, int m ,int p_m, int p,int kk,int i_loc_m);
+void get_block_row(double *a,double *buf,int n, int m ,int p_m, int p,int kk,int i_loc_m,int i_glob_m);
+void set_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int i_loc_m,int i_glob_m);
 #endif

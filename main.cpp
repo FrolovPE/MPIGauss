@@ -85,9 +85,9 @@ int main(int argc, char *argv[])
 
     
     int loc_block_rows = get_block_rows(n,m,p,kk);
-    loc_block_rows=loc_block_rows;
+    // loc_block_rows=loc_block_rows;
     int loc_rows = get_rows(n,m,p,kk);
-    // printf("rows in %d proc %d\n",kk,loc_rows);
+    printf("block rows in %d proc %d\n",kk,loc_block_rows);
     
     // printf("a[%d,%d] = %10.3e\n",k,0,a[k*n+0]);
     a = new double[n*loc_rows]; //create matrix a
@@ -167,13 +167,14 @@ int main(int argc, char *argv[])
     double *tmpvecb_m = new double[m];
     double *tmpvecb_l = new double[l]; 
     /*static*/ int *colsw = new int[k];
+    double *tmpbuf = new double[n*m];
 
     double elapsed = get_full_time();
 
     auto start_sol= std::chrono::high_resolution_clock::now();
 
 
-    if(MPI_Solve(a,b,x,n,m,p,kk,buf,vecbuf,block_mm, block_ml, block_ll,invblock_mm, diaginvblock_mm, 
+    if(MPI_Solve(a,b,x,n,m,p,kk,buf,tmpbuf,vecbuf,block_mm, block_ml, block_ll,invblock_mm, diaginvblock_mm, 
     invblock_ll,diagblock_mm,
     colsw,vecb_m,vecb_l,
     tmpblock_mm,tmpblock_ml,tmpblock_ml1,tmpblock_ll,tmpvecb_m,tmpvecb_l,MPI_COMM_WORLD) < 0)
@@ -183,6 +184,7 @@ int main(int argc, char *argv[])
         delete []x;
         delete []realx;
         delete []buf;
+        delete []tmpbuf;
         delete []vecbuf;
         delete []resvec;
         delete []block_mm ;
@@ -282,6 +284,7 @@ int main(int argc, char *argv[])
     delete []x;
     delete []realx;
     delete []buf;
+    delete []tmpbuf;
     delete []vecbuf;
     delete []resvec;
 

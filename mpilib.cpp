@@ -2503,9 +2503,9 @@ void matrix_mult_vector(double *a, double *bvec,double *c, int n, int m, int k, 
     }
 }
 
-void get_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int i_loc_m)
+void get_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int i_loc_m,int i_glob_m)
 {
-    int i_glob_m = l2g_block(kk,p,i_loc_m);
+    // int i_glob_m = l2g_block(kk,p,i_loc_m);
     int owner = i_glob_m%p;
     memset(buf,0,p_m*n*sizeof(double));
     if(owner != kk) return;
@@ -2528,8 +2528,33 @@ void get_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int
 
 }
 
+void set_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int i_loc_m,int i_glob_m)
+{
+    // int i_glob_m = l2g_block(kk,p,i_loc_m);
+    int owner = i_glob_m%p;
+    
+    if(owner != kk) return;
+
+    double *start = a + i_loc_m*m*n;
+    // int last = get_block_rows(n,p_m,p,kk)-1;
+    // int lastnum = l2g_block(kk,p,last);
+    // int b = n/m;
+    // int p_m = (lastnum == l2g_block(kk,p,i_loc_m) ? n-b*m:m);
+
+    // if(p_m != m)
+    //     printf("in get_block_row p_m = %d proc %d owner = %d i_loc_m = %d\n",p_m,kk,l2g_block(kk,p,i_loc_m)%p,i_loc_m);
+    
+
+    for(int i = 0; i < p_m; i++)
+        for(int j = 0; j < n; j++)
+        {
+            start[i*n+j] = buf[i*n+j];
+        }
+
+}
+
 int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
-    double *buf,double *vecbuf,
+    double *buf,double *tmpbuf,double *vecbuf,
     double *block_mm, double *block_ml, double *block_ll,
     double *invblock_mm, double *diaginvblock_mm, 
     double *invblock_ll,double *diagblock_mm,
@@ -2585,7 +2610,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     main_block=main_block;
     recv_main_block=recv_main_block;
     double eps = 1e-15*N;
-    int err;
+    int err{};
     // MPI_Status st;
     eps=eps;
 
@@ -2606,7 +2631,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         int i_loc_m = g2l_block(p,i_glob_m);
         int p_m = (i_glob_m == k_bl ? l:m);
         
-        get_block_row(a,buf,n,m,p_m,p,owner,i_loc_m);
+        get_block_row(a,buf,n,m,p_m,p,kk,i_loc_m,i_glob_m);
         
         MPI_Bcast(buf,n*p_m,MPI_DOUBLE,owner,MPI_COMM_WORLD);//send block row to all
 
@@ -2645,7 +2670,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 }
             }// конец проверки строки на вырожденность
         }
-        else if (kk == last_owner)//проверка [l,l] блока
+        // после реализации прямого хода разкоментить
+        else if (kk == last_owner && i_glob_m == k_bl)//проверка [l,l] блока
         {
             // printf("Proc %d in ll block\n",kk);
             get_block(buf,block_ll,n,m,0,k_bl);
@@ -2654,7 +2680,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             if(!inverse(invblock_ll,block_ll,l,eps))
             {
                 printf("Block [%d,%d] (block[l,l] in our matrix)  has no inverse after the transformations\n",i_glob_m,k_bl);
-                err = -1;
+                // err = -1;
             }
             else
             {
@@ -2731,14 +2757,85 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
             if(kk == owner)
             {
-                get_vec_block(b,vecb_m,n,m,i_glob_m);//надо подумать как переписать чтоб было корректно (ещё не тестил в исх виде)
+                get_vec_block(b,vecb_m,n,m,i_loc_m);//надо подумать как переписать чтоб было корректно (ещё не тестил в исх виде)
                 mat_x_vector(tmpvecb_m,diaginvblock_mm,vecb_m,m);// double *resvec = mat_x_vector(diaginvblock_mm,vecb_m,m);
-                // cout<<"tmpvecb_m : "<<endl;
-                // printlxn(tmpvecb_m,m,1,m,m);    
-                set_vec_block(b,tmpvecb_m,n,m,i_glob_m);
+                printf("tmpvecb_m proc %d row %d: \n",kk,i_glob_m);
+                printlxn(tmpvecb_m,m,1,m,m);    
+                set_vec_block(b,tmpvecb_m,n,m,i_loc_m);
+                printf("VECTOR B:\n");
+                for(int i = 0; i < get_rows(n,m,p,kk); i++)
+                {
+                    printf(" %10.3e",b[i]);
+                }
+            }
+
+            for(int j_loc_m = i_glob_m + kk; j_loc_m < k_bl; j_loc_m += p)
+            {
+                get_block(buf,block_mm,n,m,0,j_loc_m);
+
+                multiplication(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// matmult(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// double *resmult = matmult(diaginvblock_mm,block_mm,m,m,m)
+
+                set_block(buf,tmpblock_mm,n,m,0,j_loc_m);
+            }
+
+            if(is_l != 0)
+            {
+                get_block_ml(buf,block_ml,n,m,l,0);
+                multiplication(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);// matmult(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);
+                set_block_ml(buf,tmpblock_ml,n,m,l,0);
             }
 
         }
+        else if(kk == last_owner && i_glob_m == k_bl)
+        {
+            get_block(buf,block_ll,n,m,0,i_glob_m);
+            get_vec_block(b,vecb_l,n,m,i_loc_m);
+
+            if(!(inverse(invblock_ll,block_ll,l,eps)))
+                {
+                    printf("ll block has no inverse in proc %d\n",kk);
+                    // CLEAR; // нужно сделать не выход ретурн -1 а завести флаг по которому потом выйдут одновременно все потоки а то будет DL
+                    err = -1;
+                }
+
+            multiplication(tmpblock_ll,invblock_ll,block_ll,l,l,l);
+
+            mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
+
+            set_block(buf,tmpblock_ll,n,m,0,i_glob_m);
+            set_vec_block(b,tmpvecb_l,n,m,i_loc_m);
+        }
+        MPI_Bcast(&err,1,MPI_INT,last_owner,MPI_COMM_WORLD);
+        if(err) return err;
+
+        
+        for(int j_loc_m = 0; j_loc_m < k_bl + is_l; j_loc_m ++)
+        {
+            if(j_loc_m%p != kk)
+            {
+                int col0 = j_loc_m * m;  
+
+                for (int ii = 0; ii < p_m; ii++)
+                    memset(buf + ii*n + col0, 0, m * sizeof(double));
+            }
+        }
+
+        MPI_Allreduce(buf,tmpbuf,p_m*n,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+        memcpy(buf, tmpbuf, p_m*n*sizeof(double));
+        
+        set_block_row(a,buf,n,m,p_m,p,kk,i_loc_m,i_glob_m);
+        if(kk == main_kk) printf("\n\nMATRIX A AFTER MULT ROW %d:\n",i_glob_m);
+        print_matrix(a,n,m,p,kk,tmpbuf,n,MPI_COMM_WORLD);
+        if(kk == main_kk) printf("\nVECTOR B AFTER MULT ROW %d:\n",i_glob_m);
+        print_vector(b,n,m,p,kk,vecbuf,n,MPI_COMM_WORLD);
+        if(kk == main_kk) printf("\n");
+
+        for(int ii_loc_m = 0; ii_loc_m < get_block_rows(n,m,p,kk); ii_loc_m++)
+        {
+            get_block(a,block_mm,n,m,ii_loc_m,i_glob_m);
+            get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+        }
+        
 
     }//end straight algo
     
