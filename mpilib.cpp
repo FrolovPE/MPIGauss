@@ -2579,11 +2579,14 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     memset(colsw,0,k_bl*sizeof(int));
     int b_loc_rows = get_block_rows(n,m,p,kk);
     int owner;
-    DI main_block{};
+    int last_owner = (k_bl + is_l - 1)%p;
+    DI main_block{},recv_main_block{};
     (void)b_loc_rows;
     main_block=main_block;
+    recv_main_block=recv_main_block;
     double eps = 1e-15*N;
-    MPI_Status st;
+    int err;
+    // MPI_Status st;
     eps=eps;
 
 
@@ -2609,7 +2612,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
         if(kk == main_kk)
         {
-            printf("Owner %d printing buf i_loc_m = %d i_glob_m = %d:\n",owner,i_loc_m,i_glob_m);
+            printf("Owner %d printing proc %d buf i_loc_m = %d i_glob_m = %d:\n",owner,kk,i_loc_m,i_glob_m);
             for(int i = 0; i < p_m; i++)
             {
                 for(int j = 0; j < n; j++)
@@ -2627,39 +2630,114 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         {
             for(int j_loc_m = i_glob_m + kk; j_loc_m < k_bl; j_loc_m += p)
             {
-                if(owner == kk) 
+                get_block(buf,block_mm,n,m,0,j_loc_m);
+
+                // printf("Block[%d,%d] proc %d owner %d in row %d\n",i_glob_m,j_loc_m,kk,owner,i_glob_m);
+                // printlxn(block_mm,m,m,m,m);
+                if(inverse(invblock_mm,block_mm,m,eps))
                 {
-                    get_block(a,block_mm,n,m,i_loc_m,j_loc_m);
-                    // printf("Block[%d,%d] proc %d owner %d in row %d\n",i_loc_m,j_loc_m,kk,owner,i_glob_m);
-                    // printlxn(block_mm,m,m,m,m);
+                    N = normofmatrix(invblock_mm,m);
+                    if( N < main_block.norm) 
+                    {
+                        main_block.norm = N;
+                        main_block.num = j_loc_m;
+                    }
+                }
+            }// конец проверки строки на вырожденность
+        }
+        else if (kk == last_owner)//проверка [l,l] блока
+        {
+            // printf("Proc %d in ll block\n",kk);
+            get_block(buf,block_ll,n,m,0,k_bl);
+            // printf("Block[%d,%d] (l,l) proc %d owner %d in row %d\n",i_glob_m,k_bl,kk,owner,i_glob_m);
+            // printlxn(block_ll,l,l,l,l);
+            if(!inverse(invblock_ll,block_ll,l,eps))
+            {
+                printf("Block [%d,%d] (block[l,l] in our matrix)  has no inverse after the transformations\n",i_glob_m,k_bl);
+                err = -1;
+            }
+            else
+            {
+                main_block.norm = normofmatrix(invblock_ll,l);
+                main_block.num = k_bl;
+            }
+        }//конец проверки [l,l] блока
+        MPI_Bcast(&err,1,MPI_INT,last_owner,MPI_COMM_WORLD);
+        if(err) return err;
+
+        main_block.norm = 1.0/main_block.norm;
+
+        //обмен процессов, чтобы выяснить у кого главный юлок в строке
+        MPI_Allreduce(&main_block,&recv_main_block,1,MPI_DOUBLE_INT,MPI_MAXLOC,MPI_COMM_WORLD); // ??
+        main_block = recv_main_block;
+        if(kk == main_kk) printf("In proc %d row %d main_block.norm = %10.3e main_block.num = %d\n",kk,i_glob_m, main_block.norm,main_block.num);
+
+        if(kk == main_kk)
+        {    
+            if((fabs(main_block.norm - 1e64) < eps))
+            {   
+                if(i_glob_m != 0)
+                {
+                    printf("No inverse matrix in row %d after the transformations in proc %d\n",i_glob_m,owner);
+                    // cout<<"\n MATRIX A :\n";
+                    // printlxn(a,n,n,n,r);
+                    err = 1;
                 }
                 else
-                {
-                    get_block(buf,block_mm,n,m,0,j_loc_m);
-                    // printf("Block[%d,%d] proc %d owner %d in row %d\n",0,j_loc_m,kk,owner,i_glob_m);
-                    // printlxn(block_mm,m,m,m,m);
-                }
+                    printf("No inverse matrix in row %d\n",i_glob_m);
 
-                // if(kk == main_kk)
-                // {
-                //     if(owner == kk)
-                //     {
-                //         printf("Block[%d,%d] proc %d owner %d in row %d\n",i_loc_m,j_loc_m,kk,owner,i_glob_m);
-                //         printlxn(block_mm,m,m,m,m);
-                //     }
-                //     else
-                //     {
-                //         MPI_Recv(tmpblock_mm,m*m,MPI_DOUBLE,owner,0,MPI_COMM_WORLD,&st);
-                //         printf("Block[%d,%d] proc %d owner %d in row %d\n",0,j_loc_m,kk,owner,i_glob_m);
-                //         printlxn(tmpblock_mm,m,m,m,m);
-                //     }
-                // }
-                // else if(kk == owner)
-                // {
-                //     MPI_Send(block_mm,m*m,MPI_DOUBLE,main_kk,0,MPI_COMM_WORLD);
-                // }
-
+                // clear(block_mm,block_ml,block_ll,tmpblock_mm,tmpblock_ml,tmpblock_ml1,tmpblock_ll,invblock_mm,invblock_ll,diagblock_mm,diaginvblock_mm,vecb_m,vecb_l,tmpvecb_m, tmpvecb_l,colsw);
+                err = -1;
             }
+        }
+        MPI_Bcast(&err,1,MPI_INT,main_kk,MPI_COMM_WORLD);
+        if(err) return err;
+
+        if(main_block.num != i_glob_m && i_glob_m < k_bl)
+        {
+
+            printf("BEFORE SWAP COLUMNS %d %d\n",i_glob_m,main_block.num);
+            printlxn(a,n,n,n,n);// мб потом сделать просто вывод buf
+            swap_block_columns(a,n,m,i_glob_m,main_block.num);
+            //swap_block_columns(buf,...)
+            printf("AFTER SWAP COLUMNS %d %d\n",i_glob_m,main_block.num);
+            printlxn(a,n,n,n,n);// мб потом сделать просто вывод buf
+            swap(colsw[i_glob_m],colsw[main_block.num]);
+            printf("swapped %d %d in row %d",i_glob_m,main_block.num,i_glob_m);
+        }
+        else if(main_block.num == -1 && i_glob_m < k_bl)
+        {
+            printf("NO mainblock in row %d\n",i_glob_m);
+            err = -1;
+        }
+        MPI_Bcast(&err,1,MPI_INT,main_kk,MPI_COMM_WORLD);
+        if(err) return err;
+
+        //start multiplication
+
+        if(i_glob_m < k_bl)
+        {
+            get_block(buf,diagblock_mm,n,m,0,i_glob_m);
+
+            if(!(inverse(diaginvblock_mm,diagblock_mm,m,eps)))
+            {
+                printf("no blocks in row has inverse block i = %d proc %d\n",i_glob_m,kk);
+                // printlxn(a,n,n,n,r);
+                // CLEAR;
+                err = -1;
+            }
+            MPI_Bcast(&err,1,MPI_INT,main_kk,MPI_COMM_WORLD);
+            if(err) return err;
+
+            if(kk == owner)
+            {
+                get_vec_block(b,vecb_m,n,m,i_glob_m);//надо подумать как переписать чтоб было корректно (ещё не тестил в исх виде)
+                mat_x_vector(tmpvecb_m,diaginvblock_mm,vecb_m,m);// double *resvec = mat_x_vector(diaginvblock_mm,vecb_m,m);
+                // cout<<"tmpvecb_m : "<<endl;
+                // printlxn(tmpvecb_m,m,1,m,m);    
+                set_vec_block(b,tmpvecb_m,n,m,i_glob_m);
+            }
+
         }
 
     }//end straight algo
