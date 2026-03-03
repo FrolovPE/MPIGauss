@@ -2672,7 +2672,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             }// конец проверки строки на вырожденность
         }
         // после реализации прямого хода разкоментить
-        else if (kk == last_owner && i_glob_m == k_bl)//проверка [l,l] блока
+        else if (kk == last_owner && i_glob_m == k_bl && l!=0)//проверка [l,l] блока
         {
             // printf("Proc %d in ll block\n",kk);
             get_block(buf,block_ll,n,m,0,k_bl);
@@ -2817,10 +2817,11 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         {
             if(j_loc_m%p != kk)
             {
-                int col0 = j_loc_m * m;  
+                int col0 = j_loc_m * m;
+                int size = (j_loc_m == k_bl ? l:m);
 
                 for (int ii = 0; ii < p_m; ii++)
-                    memset(buf + ii*n + col0, 0, m * sizeof(double));
+                    memset(buf + ii*n + col0, 0, size * sizeof(double));
             }
         }
 
@@ -2920,6 +2921,12 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     set_block(a,tmpblock_ll,n,m,rows,rows);
                 }
             }
+
+            if(kk == main_kk) printf("\n\nMATRIX A AFTER REDUCE ROW %d:\n",i_glob_m);
+            print_matrix(a,n,m,p,kk,tmpbuf,n,MPI_COMM_WORLD);
+            if(kk == main_kk) printf("\nVECTOR B AFTER REDUCE ROW %d:\n",i_glob_m);
+            print_vector(b,n,m,p,kk,vecbuf,n,MPI_COMM_WORLD);
+            if(kk == main_kk) printf("\n");//что то не так в прямом ходе посмотреть чтательно индексы
         }
         
 
