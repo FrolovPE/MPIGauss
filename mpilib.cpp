@@ -2554,7 +2554,7 @@ void set_block_row(double *a,double *buf,int n, int m, int p_m, int p,int kk,int
 }
 
 int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
-    double *buf,double *tmpbuf,double *vecbuf,
+    double *buf,double *tmpbuf,double *vecbuf,double *resvec,
     double *block_mm, double *block_ml, double *block_ll,
     double *invblock_mm, double *diaginvblock_mm, 
     double *invblock_ll,double *diagblock_mm,
@@ -2566,6 +2566,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     int main_kk = 0;
     main_kk=main_kk;
     b=b;
+    resvec=resvec;
     x=x;
     buf=buf;
     vecbuf=vecbuf;
@@ -2792,18 +2793,21 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             get_vec_block(b,vecb_l,n,m,i_loc_m);
 
             if(!(inverse(invblock_ll,block_ll,l,eps)))
-                {
-                    printf("ll block has no inverse in proc %d\n",kk);
-                    // CLEAR; // нужно сделать не выход ретурн -1 а завести флаг по которому потом выйдут одновременно все потоки а то будет DL
-                    err = -1;
-                }
-
+            {
+                printf("ll block has no inverse in proc %d\n",kk);
+                // CLEAR; // нужно сделать не выход ретурн -1 а завести флаг по которому потом выйдут одновременно все потоки а то будет DL
+                err = -1;
+            }
+            else
+            {
             multiplication(tmpblock_ll,invblock_ll,block_ll,l,l,l);
 
             mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
 
             set_block(buf,tmpblock_ll,n,m,0,i_glob_m);
             set_vec_block(b,tmpvecb_l,n,m,i_loc_m);
+            }
+
         }
         MPI_Bcast(&err,1,MPI_INT,last_owner,MPI_COMM_WORLD);
         if(err) return err;
@@ -2830,24 +2834,91 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         print_vector(b,n,m,p,kk,vecbuf,n,MPI_COMM_WORLD);
         if(kk == main_kk) printf("\n");
 
+        if(kk == owner)
+            memcpy(resvec,b+i_loc_m*m,p_m*sizeof(double));
+        
+        MPI_Bcast(resvec,m,MPI_DOUBLE,owner,MPI_COMM_WORLD);//правильно ли работае с ll?
+
+        printf("MY PART(proc %d i_glob_m = %d) OF VECTOR B: \n",kk,i_glob_m);
+        for(int i = 0; i < p_m; i++)
+        {
+            printf(" %10.3e",resvec[i]);
+        }
+        printf("\n");
+        
+
         for(int ii_loc_m = 0; ii_loc_m < get_block_rows(n,m,p,kk); ii_loc_m++)
         {
             int ii_glob_m = l2g_block(kk,p,ii_loc_m);
 
             if(ii_glob_m <= i_glob_m) continue;//если номер локальной строки в глобальной нумерации <= текущего глобального номера то пропускаем
 
-            if(ii_glob_m != k_bl + is_l - 1)
+            if(ii_glob_m != k_bl)
             {
-                get_block(buf,block_mm,n,m,0,i_glob_m);
+                get_block(buf,block_mm,n,m,0,i_loc_m);
                 // get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
 
                 memset(tmpblock_mm,0, m*m*sizeof(double));
-                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_loc_m);
 
-                //должны переслать часть вектора b из owner всем get_vec_block(b,vecb_m,n,m,i_loc_m);//вычитание из вектора b block_mm*b
-                // get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
-                // vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
-                // set_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+                get_vec_block(resvec,vecb_m,n,m,0);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
+                get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+                vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
+                set_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+
+                for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
+                {
+                    get_block(buf,invblock_mm,n,m,0,j_loc_m);
+                    get_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m);
+                    mat_mult_sub(diagblock_mm,block_mm,invblock_mm,m,m,m);
+                    set_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m);
+                }
+
+                if (is_l!= 0) 
+                {
+                    get_block_ml(buf,tmpblock_ml,n,m,l,0);
+                    get_block_ml(a,tmpblock_ml1,n,m,l,ii_loc_m);
+                    mat_mult_sub(tmpblock_ml1,block_mm,tmpblock_ml,m,l,m);
+                    set_block_ml(a,tmpblock_ml1,n,m,l,ii_loc_m);
+                }
+
+            }
+            else if(kk == last_owner && ii_glob_m == k_bl && l!=0)
+            {
+                int rows = get_rows(n,m,p,kk);
+                get_block_lm(a, block_ml,rows , m, l, i_loc_m);
+
+
+                // get_block_lm(a, tmpblock_ml, rows, m, l, i_loc_m);
+                memset(tmpblock_ml,0,m*l*sizeof(double));
+                set_block_lm(a, tmpblock_ml, rows, m, l, i_glob_m);
+
+                get_vec_block(resvec,vecb_m,n,m,0);
+
+                get_vec_block(b,tmpvecb_l,n,m,ii_loc_m);
+                vec_mult_sub_lm(tmpvecb_l,block_ml,vecb_m,l,m);// vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
+                set_vec_block(b,tmpvecb_l,n,m,ii_loc_m);  // set_vec_block(b,tmpvecb_m,n,m,r);
+                
+                for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
+                {
+                    get_block(buf,invblock_mm,n,m,0,j_loc_m);
+                    get_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
+                    
+                    mat_mult_sub(tmpblock_ml,block_ml,tmpblock_mm,l,m,m);
+
+
+                    get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);//
+                    vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
+                    set_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
+
+                }
+
+                if (is_l != 0) {
+                    get_block_ml(a,tmpblock_ml,n,m,l,i_loc_m);
+                    get_block(a,tmpblock_ll,n,m,rows,rows);
+                    mat_mult_sub(tmpblock_ll,block_ml,tmpblock_ml,l,l,m);
+                    set_block(a,tmpblock_ll,n,m,rows,rows);
+                }
             }
         }
         

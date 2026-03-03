@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     auto start_sol= std::chrono::high_resolution_clock::now();
 
 
-    if(MPI_Solve(a,b,x,n,m,p,kk,buf,tmpbuf,vecbuf,block_mm, block_ml, block_ll,invblock_mm, diaginvblock_mm, 
+    if(MPI_Solve(a,b,x,n,m,p,kk,buf,tmpbuf,vecbuf,resvec,block_mm, block_ml, block_ll,invblock_mm, diaginvblock_mm, 
     invblock_ll,diagblock_mm,
     colsw,vecb_m,vecb_l,
     tmpblock_mm,tmpblock_ml,tmpblock_ml1,tmpblock_ll,tmpvecb_m,tmpvecb_l,MPI_COMM_WORLD) < 0)
