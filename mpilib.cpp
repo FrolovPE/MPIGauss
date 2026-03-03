@@ -2846,21 +2846,26 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             printf(" %10.3e",resvec[i]);
         }
         printf("\n");
+
+        int rows = get_rows(n,m,p,kk);
         
 
         for(int ii_loc_m = 0; ii_loc_m < get_block_rows(n,m,p,kk); ii_loc_m++)
         {
             int ii_glob_m = l2g_block(kk,p,ii_loc_m);
+            // printf("\nii_glob_m = %d i_glom_m = %d proc %d\n",ii_glob_m,i_glob_m,kk); // правильно
 
             if(ii_glob_m <= i_glob_m) continue;//если номер локальной строки в глобальной нумерации <= текущего глобального номера то пропускаем
 
-            if(ii_glob_m != k_bl)
+            if(ii_glob_m != k_bl )
             {
-                get_block(buf,block_mm,n,m,0,i_loc_m);
+                get_block(buf,block_mm,n,m,0,i_glob_m); // начал исправлять индексы
                 // get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+                printf("\nproc %d take block_mm[%d,%d]\n",kk,ii_glob_m,i_glob_m);
+                printlxn(block_mm,m,m,m,m);
 
                 memset(tmpblock_mm,0, m*m*sizeof(double));
-                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_loc_m);
+                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
 
                 get_vec_block(resvec,vecb_m,n,m,0);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
                 get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
@@ -2882,17 +2887,17 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     mat_mult_sub(tmpblock_ml1,block_mm,tmpblock_ml,m,l,m);
                     set_block_ml(a,tmpblock_ml1,n,m,l,ii_loc_m);
                 }
-
+                // тут вроде все индексы правильные
             }
             else if(kk == last_owner && ii_glob_m == k_bl && l!=0)
             {
-                int rows = get_rows(n,m,p,kk);
-                get_block_lm(a, block_ml,rows , m, l, i_loc_m);
+                
+                get_block_lm(a, block_ml,rows, m, l, ii_loc_m);
 
 
                 // get_block_lm(a, tmpblock_ml, rows, m, l, i_loc_m);
                 memset(tmpblock_ml,0,m*l*sizeof(double));
-                set_block_lm(a, tmpblock_ml, rows, m, l, i_glob_m);
+                set_block_lm(a, tmpblock_ml, rows, m, l, ii_loc_m);
 
                 get_vec_block(resvec,vecb_m,n,m,0);
 
@@ -2902,7 +2907,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 
                 for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
                 {
-                    get_block(buf,invblock_mm,n,m,0,j_loc_m);
+                    get_block(buf,tmpblock_mm,n,m,0,j_loc_m);
                     get_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
                     
                     mat_mult_sub(tmpblock_ml,block_ml,tmpblock_mm,l,m,m);
@@ -2911,23 +2916,28 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);//
                     vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
                     set_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
+                    // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
+
 
                 }
 
-                if (is_l != 0) {
-                    get_block_ml(a,tmpblock_ml,n,m,l,i_loc_m);
-                    get_block(a,tmpblock_ll,n,m,rows,rows);
+                if (is_l != 0)
+                {
+                    get_block_ml(buf,tmpblock_ml,n,m,l,0);
+                    get_block(a,tmpblock_ll,n,m,k_bl-1,k_bl-1);
                     mat_mult_sub(tmpblock_ll,block_ml,tmpblock_ml,l,l,m);
-                    set_block(a,tmpblock_ll,n,m,rows,rows);
+                    set_block(a,tmpblock_ll,n,m,k_bl-1,k_bl-1);
+                    //переделать get_block и все его версии
                 }
             }
 
-            if(kk == main_kk) printf("\n\nMATRIX A AFTER REDUCE ROW %d:\n",i_glob_m);
+            
+        }
+        if(kk == main_kk) printf("\n\nMATRIX A AFTER REDUCE ROW %d:\n",i_glob_m);
             print_matrix(a,n,m,p,kk,tmpbuf,n,MPI_COMM_WORLD);
             if(kk == main_kk) printf("\nVECTOR B AFTER REDUCE ROW %d:\n",i_glob_m);
             print_vector(b,n,m,p,kk,vecbuf,n,MPI_COMM_WORLD);
             if(kk == main_kk) printf("\n");//что то не так в прямом ходе посмотреть чтательно индексы
-        }
         
 
     }//end straight algo
