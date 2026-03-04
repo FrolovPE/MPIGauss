@@ -2979,9 +2979,58 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             if(kk == main_kk) printf("\n");//что то не так в прямом ходе посмотреть чтательно индексы
         
 
-    }//end straight algo
+    }//end straight algo(вроде всё работает)
 
     //start reverse algo
+
+    for(int i_glob_m = k_bl + is_l - 1; i_glob_m >= 0; i_glob_m--)
+    {
+        int i_loc_m = g2l_block(p,i_glob_m);
+        owner = i_glob_m%p;
+        int p_m = (i_glob_m == k_bl ? l:m);
+
+        if(kk == owner)
+        {
+            for(int s = 0; s < p_m; s++)
+            {
+                if(p_m != m) vecb_l[s] = b[i_loc_m*m + s];
+                vecb_m[s] = b[i_loc_m*m + s];
+            }
+
+            for(int j_loc_m = i_glob_m + 1; j_loc_m <= k_bl + is_l -1; j_loc_m++)
+            {
+                int col_size = (j_loc_m == k_bl ? l:m);
+
+                for(int ii = 0; ii < p_m; ii++)
+                {
+                    double sum{};
+                    for(int jj = 0; jj < col_size; jj++)
+                    {
+                        sum += a[ (i_loc_m*m + ii)*n + j_loc_m*m + jj];
+                    }
+
+                    if(p_m != m) vecb_l[ii] -= sum;
+                    vecb_m[ii] -= sum;
+
+                }
+
+            }
+        }
+
+        if(p_m != m) MPI_Bcast(vecb_l,p_m,MPI_DOUBLE,owner,MPI_COMM_WORLD);
+        else MPI_Bcast(vecb_m,p_m,MPI_DOUBLE,owner,MPI_COMM_WORLD);
+
+        if(p_m != m) for(int t = 0; t < l; t++) x[t] = vecb_l[t];
+        else for(int t = 0; t < m; t++) x[t] = vecb_m[t];
+    }
+
+    // for(int ii_loc_m = b_rows-1; ii_loc_m >= 0; ii_loc_m--)
+    // {
+    //     int ii_glob_m = l2g_block(kk,p,ii_loc_m);
+
+    //     if()
+    // }
+    
     
 
     return 0;

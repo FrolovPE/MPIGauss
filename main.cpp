@@ -240,6 +240,8 @@ int main(int argc, char *argv[])
     
 
     //print vector x
+    if(kk == main_kk) printf("Soulution vector x:\n");
+    print_vector(x,n,m,p,kk,vecbuf,r,MPI_COMM_WORLD);
     
     
     
