@@ -315,22 +315,22 @@ void matmult(double *res,double *a, double *b, int n, int m,int l) //a^{n*m} * b
 
 }
 
- void get_block(double *a, double *b, int n, int m, int i, int j)
+ void get_block(double *a, double *b, int n, int m, int i_loc_m, int j_loc_m,int i_glob_m)
 {
     int i1=0, j1=0, k, l, r, h;
     if(m == 0) {
-        printf("m == 0 in i = %d , j = %d\n",i,j);
+        printf("m == 0 in i = %d , j = %d\n",i_glob_m,j_loc_m);
         return;
     }
     k = n/m; l = n - m*k ;
-    if(i < k) r = m;
+    if(i_glob_m < k) r = m;
     else r = l;
 
-    if(j < k) h = m;
+    if(j_loc_m < k) h = m;
     else h = l;
 
 
-    double *bl = a + i*n*m + j*m; //start of block double *bl = a + i*n*m + j*m;
+    double *bl = a + i_loc_m*n*m + j_loc_m*m; //start of block double *bl = a + i*n*m + j*m;
 
     for (i1 =0 ; i1 < r ; i1++)
     {
@@ -347,18 +347,18 @@ void matmult(double *res,double *a, double *b, int n, int m,int l) //a^{n*m} * b
 
 
 
-void set_block(double *a, double *b, int n, int m, int i, int j)
+void set_block(double *a, double *b, int n, int m, int i_loc_m, int j_loc_m,int i_glob_m)
 {
     int i1=0, j1=0, k, l, r, h;
     k = n/m; l = n - m*k ;
-    if(i < k) r = m;
+    if(i_glob_m < k) r = m;
     else r = l;
 
-    if(j < k) h = m;
+    if(j_loc_m < k) h = m;
     else h = l;
 
 
-    double *bl = a + i*n*m + j*m; //start of block
+    double *bl = a + i_loc_m*n*m + j_loc_m*m; //start of block
 
     for (i1 =0 ; i1 < r ; i1++)
     {
@@ -787,12 +787,12 @@ void set_block_ml(double *a, double *b, int n, int m,int l, int i)
     
 }
 
-void get_block_lm(double *a, double *b, int n, int m,int l, int j)
+void get_block_lm(double *a, double *b,int locrows, int n, int m,int l, int j)
 {
 int i1=0, j1=0;
    
 
-    double *bl = a + (n-l)*n + j*m; //start of block double *bl = a + i*n*m + j*m;
+    double *bl = a + (locrows-l)*n + j*m; //start of block double *bl = a + i*n*m + j*m;
 
     for (i1 =0 ; i1 < l ; i1++)
     {
@@ -806,12 +806,12 @@ int i1=0, j1=0;
     
 }
 
-void set_block_lm(double *a, double *b, int n, int m,int l, int j)
+void set_block_lm(double *a, double *b,int locrows, int n, int m,int l, int j)
 {
 int i1=0, j1=0;
    
 
-    double *bl = a + (n-l)*n + j*m; //start of block double *bl = a + i*n*m + j*m;
+    double *bl = a + (locrows-l)*n + j*m; //start of block double *bl = a + i*n*m + j*m;
 
     for (i1 =0 ; i1 < l ; i1++)
     {
@@ -1028,319 +1028,319 @@ void multiplication(double* Result, double* Block_A, double* Block_B, const int 
 
 
 
-int solution(int n, int m, double *a, double *b, double *x,
-    double *block_mm, double *block_ml, double *block_ll,double *invblock_mm, double *diaginvblock_mm, 
-    double *invblock_ll,double *diagblock_mm,
-    int *colsw,double *vecb_m,double *vecb_l,
-    double *tmpblock_mm,double *tmpblock_ml,double *tmpblock_ml1,double *tmpblock_ll,double *tmpvecb_m,double *tmpvecb_l,const double eps)
-{
+// int solution(int n, int m, double *a, double *b, double *x,
+//     double *block_mm, double *block_ml, double *block_ll,double *invblock_mm, double *diaginvblock_mm, 
+//     double *invblock_ll,double *diagblock_mm,
+//     int *colsw,double *vecb_m,double *vecb_l,
+//     double *tmpblock_mm,double *tmpblock_ml,double *tmpblock_ml1,double *tmpblock_ll,double *tmpvecb_m,double *tmpvecb_l,const double eps)
+// {
     
-    // m=m;
-    // a=a;
-    // b=b;
-    // block_ml=block_ml;
-    // diaginvblock_mm=diaginvblock_mm;
-    // diagblock_mm=diagblock_mm;
-    // vecb_l=vecb_l;
-    // tmpblock_ml1 = tmpblock_ml1;
-
-    
+//     // m=m;
+//     // a=a;
+//     // b=b;
+//     // block_ml=block_ml;
+//     // diaginvblock_mm=diaginvblock_mm;
+//     // diagblock_mm=diagblock_mm;
+//     // vecb_l=vecb_l;
+//     // tmpblock_ml1 = tmpblock_ml1;
 
     
 
-    int  k, l/*, r, h*/;
-    // int i = 1,
-    // j=0;
-
-    k = n/m; l = n - m*k ;
     
-    int is_l = (l == 0) ? 0:1; 
+
+//     int  k, l/*, r, h*/;
+//     // int i = 1,
+//     // j=0;
+
+//     k = n/m; l = n - m*k ;
+    
+//     int is_l = (l == 0) ? 0:1; 
     
     
-    for(int c =0; c < k  ;c++) colsw[c]=c;
+//     for(int c =0; c < k  ;c++) colsw[c]=c;
 
-    for(int i = 0 ; i < k + is_l; i++)
-    {   
-        double minNorm = 1e64;
+//     for(int i = 0 ; i < k + is_l; i++)
+//     {   
+//         double minNorm = 1e64;
 
-        int mainBlock = i;
+//         int mainBlock = i;
 
-        if(i != k)
-        {
-            for(int j = i ; j< k ; j++)
-            {
+//         if(i != k)
+//         {
+//             for(int j = i ; j< k ; j++)
+//             {
 
-            get_block(a,block_mm,n,m,i,j);
+//             get_block(a,block_mm,n,m,i,j);
 
-    //             printf("Block[%d,%d]\n",i,j);
-    //             printlxn(block_mm,m,m,m,m);
+//     //             printf("Block[%d,%d]\n",i,j);
+//     //             printlxn(block_mm,m,m,m,m);
 
             
-            // printlxn(invblock_mm,m,m,m,m);
+//             // printlxn(invblock_mm,m,m,m,m);
 
-            if(inverse(invblock_mm,block_mm,m,eps))
-                {
+//             if(inverse(invblock_mm,block_mm,m,eps))
+//                 {
 
                         
-//                     cout<<"inverse "<<i<<" "<<j<<" with norm = "<<normofmatrix(invblock_mm,m)<<endl;
-// 
-//                 printlxn(invblock_mm,m,m,m,m);
+// //                     cout<<"inverse "<<i<<" "<<j<<" with norm = "<<normofmatrix(invblock_mm,m)<<endl;
+// // 
+// //                 printlxn(invblock_mm,m,m,m,m);
 
-                if(normofmatrix(invblock_mm,m) < minNorm) 
-                    {
+//                 if(normofmatrix(invblock_mm,m) < minNorm) 
+//                     {
                         
-                        minNorm = normofmatrix(invblock_mm,m);
-                        mainBlock = j;
+//                         minNorm = normofmatrix(invblock_mm,m);
+//                         mainBlock = j;
                        
-                    }
-                }
+//                     }
+//                 }
 
-            }
+//             }
 
-        }else{
-            get_block(a,block_ll,n,m,k,k);
+//         }else{
+//             get_block(a,block_ll,n,m,k,k);
 
-            if(!inverse(invblock_ll,block_ll,l,eps))
-            {
-                printf("Block [%d,%d] (block[l,l] in our matrix)  has no inverse after the transformations\n",k,k);
-                return -1;
-            }
+//             if(!inverse(invblock_ll,block_ll,l,eps))
+//             {
+//                 printf("Block [%d,%d] (block[l,l] in our matrix)  has no inverse after the transformations\n",k,k);
+//                 return -1;
+//             }
             
             
-//             printlxn(invblock_ll,l,l,l,l);
-            minNorm = normofmatrix(invblock_ll,l);
+// //             printlxn(invblock_ll,l,l,l,l);
+//             minNorm = normofmatrix(invblock_ll,l);
             
-        }
+//         }
 
-        if((fabs(minNorm - 1e64) < eps))
-        {   
-            if(i!=0)
-                printf("No inverse matrix in row %d after the transformations\n",i);
-            else
-                printf("No inverse matrix in row %d\n",i);
-            return -1;
-        }
+//         if((fabs(minNorm - 1e64) < eps))
+//         {   
+//             if(i!=0)
+//                 printf("No inverse matrix in row %d after the transformations\n",i);
+//             else
+//                 printf("No inverse matrix in row %d\n",i);
+//             return -1;
+//         }
 
-        if(mainBlock != i)
-            {
-                swap_block_columns(a,n,m,i,mainBlock);
-                // printlxn(a,n,n,n,n);
-                swap(colsw[i],colsw[mainBlock]);
-                // cout<<"swapped "<< i<<" "<<mainBlock<<" in row "<<i<<endl;
-            }
+//         if(mainBlock != i)
+//             {
+//                 swap_block_columns(a,n,m,i,mainBlock);
+//                 // printlxn(a,n,n,n,n);
+//                 swap(colsw[i],colsw[mainBlock]);
+//                 // cout<<"swapped "<< i<<" "<<mainBlock<<" in row "<<i<<endl;
+//             }
         
         
-        // printlxn(a,n,n,n,n);
-        // cout<<"TEST1"<<endl;
-        if(i<k)
-        {
-            get_block(a,diagblock_mm,n,m,i,i);
+//         // printlxn(a,n,n,n,n);
+//         // cout<<"TEST1"<<endl;
+//         if(i<k)
+//         {
+//             get_block(a,diagblock_mm,n,m,i,i);
             
-            if(!(inverse(diaginvblock_mm,diagblock_mm,m,eps)))
-            {
-                        printf("no blocks in row has inverse block\n");
+//             if(!(inverse(diaginvblock_mm,diagblock_mm,m,eps)))
+//             {
+//                         printf("no blocks in row has inverse block\n");
                         
-                        return -1;
-                    }
+//                         return -1;
+//                     }
 
-            get_vec_block(b,vecb_m,n,m,i);
-            mat_x_vector(tmpvecb_m,diaginvblock_mm,vecb_m,m);// double *resvec = mat_x_vector(diaginvblock_mm,vecb_m,m);
-            // cout<<"tmpvecb_m : "<<endl;
-            // printlxn(tmpvecb_m,m,1,m,m);    
-            set_vec_block(b,tmpvecb_m,n,m,i);
+//             get_vec_block(b,vecb_m,n,m,i);
+//             mat_x_vector(tmpvecb_m,diaginvblock_mm,vecb_m,m);// double *resvec = mat_x_vector(diaginvblock_mm,vecb_m,m);
+//             // cout<<"tmpvecb_m : "<<endl;
+//             // printlxn(tmpvecb_m,m,1,m,m);    
+//             set_vec_block(b,tmpvecb_m,n,m,i);
 
-            for(int j = i ; j < k ; j++) //mb try j = i
-            {
-                get_block(a,block_mm,n,m,i,j);
+//             for(int j = i ; j < k ; j++) //mb try j = i
+//             {
+//                 get_block(a,block_mm,n,m,i,j);
                 
-               multiplication(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// matmult(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// double *resmult = matmult(diaginvblock_mm,block_mm,m,m,m)
+//                multiplication(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// matmult(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// double *resmult = matmult(diaginvblock_mm,block_mm,m,m,m)
 
-                set_block(a,tmpblock_mm,n,m,i,j);
+//                 set_block(a,tmpblock_mm,n,m,i,j);
                 
-                            if (!block_mm || !vecb_m || !invblock_mm) {
-                fprintf(stderr, "Error: temporary buffers not initialized!\n");
-                return -1;
-            }
-            }
-            // printlxn(a,n,n,n,n);
-            if(is_l != 0)
-            {
-                get_block_ml(a,block_ml,n,m,l,i);
-                multiplication(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);// matmult(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);
-                set_block_ml(a,tmpblock_ml,n,m,l,i);
-            }
+//                             if (!block_mm || !vecb_m || !invblock_mm) {
+//                 fprintf(stderr, "Error: temporary buffers not initialized!\n");
+//                 return -1;
+//             }
+//             }
+//             // printlxn(a,n,n,n,n);
+//             if(is_l != 0)
+//             {
+//                 get_block_ml(a,block_ml,n,m,l,i);
+//                 multiplication(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);// matmult(tmpblock_ml,diaginvblock_mm,block_ml,m,m,l);
+//                 set_block_ml(a,tmpblock_ml,n,m,l,i);
+//             }
             
-        }else
-            {   
-                // printlxn(a,n,n,n,n);
-                // printlxn(b,n,1,n,n);
-                get_block(a,block_ll,n,m,i,i);
-                get_vec_block(b,vecb_l,n,m,i);
+//         }else
+//             {   
+//                 // printlxn(a,n,n,n,n);
+//                 // printlxn(b,n,1,n,n);
+//                 get_block(a,block_ll,n,m,i,i);
+//                 get_vec_block(b,vecb_l,n,m,i);
 
-                // printlxn(block_ll,l,l,l,n);
+//                 // printlxn(block_ll,l,l,l,n);
 
-                // cout<<"vecb_l:"<<endl;
-                // printlxn(vecb_l,l,1,l,n);
+//                 // cout<<"vecb_l:"<<endl;
+//                 // printlxn(vecb_l,l,1,l,n);
 
-                if(!(inverse(invblock_ll,block_ll,l,eps)))
-                    {
-                        printf("ll block has no inverse\n");
-                        return -1;
-                    }
+//                 if(!(inverse(invblock_ll,block_ll,l,eps)))
+//                     {
+//                         printf("ll block has no inverse\n");
+//                         return -1;
+//                     }
 
                 
-                // printlxn(invblock_ll,l,l,l,n);
+//                 // printlxn(invblock_ll,l,l,l,n);
 
-                multiplication(tmpblock_ll,invblock_ll,block_ll,l,l,l);// matmult(tmpblock_ll,invblock_ll,block_ll,l,l,l);
+//                 multiplication(tmpblock_ll,invblock_ll,block_ll,l,l,l);// matmult(tmpblock_ll,invblock_ll,block_ll,l,l,l);
 
-                mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
+//                 mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
                 
-                // printlxn(tmpvecb_l,l,1,l,n);
+//                 // printlxn(tmpvecb_l,l,1,l,n);
 
-                set_block(a,tmpblock_ll,n,m,i,i);
-                set_vec_block(b,tmpvecb_l,n,m,i);
-                // cout<<"WE ARE IN i = k"<<endl;
-            }
+//                 set_block(a,tmpblock_ll,n,m,i,i);
+//                 set_vec_block(b,tmpvecb_l,n,m,i);
+//                 // cout<<"WE ARE IN i = k"<<endl;
+//             }
 
-            // printlxn(a,n,n,n,n);
-            // printlxn(b,n,1,n,n);
-            //начинаем обнулять столбцы
+//             // printlxn(a,n,n,n,n);
+//             // printlxn(b,n,1,n,n);
+//             //начинаем обнулять столбцы
             
-        for(int r = i+1 ; r < k + is_l ; r++)
-        {
-            // cout<<"TEST "<<r<<endl;
-            if(r < k)
-            {
-                get_block(a,block_mm,n,m,r,i);
-                get_block(a,tmpblock_mm,n,m,r,i);
-                memset(tmpblock_mm,0, m*m*sizeof(double));
-                set_block(a,tmpblock_mm,n,m,r,i);
+//         for(int r = i+1 ; r < k + is_l ; r++)
+//         {
+//             // cout<<"TEST "<<r<<endl;
+//             if(r < k)
+//             {
+//                 get_block(a,block_mm,n,m,r,i);
+//                 get_block(a,tmpblock_mm,n,m,r,i);
+//                 memset(tmpblock_mm,0, m*m*sizeof(double));
+//                 set_block(a,tmpblock_mm,n,m,r,i);
 
-                // not in i for
-                get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
-                get_vec_block(b,tmpvecb_m,n,m,r);
-                vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
-                set_vec_block(b,tmpvecb_m,n,m,r);
+//                 // not in i for
+//                 get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
+//                 get_vec_block(b,tmpvecb_m,n,m,r);
+//                 vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
+//                 set_vec_block(b,tmpvecb_m,n,m,r);
 
-                // cout<<"tmpvecb_m in subtract i= "<<i<<" r="<<r<<endl;
-                // printlxn(tmpvecb_m,m,1,m,m);
-                // printlxn(b,n,1,n,n);
+//                 // cout<<"tmpvecb_m in subtract i= "<<i<<" r="<<r<<endl;
+//                 // printlxn(tmpvecb_m,m,1,m,m);
+//                 // printlxn(b,n,1,n,n);
 
-                for (int j = i + 1; j < k; j++) {
-                    get_block(a,invblock_mm,n,m,i,j);
-                    get_block(a,diagblock_mm,n,m,r,j);
-                    mat_mult_sub(diagblock_mm,block_mm,invblock_mm,m,m,m);
-                    set_block(a,diagblock_mm,n,m,r,j);
-                }
+//                 for (int j = i + 1; j < k; j++) {
+//                     get_block(a,invblock_mm,n,m,i,j);
+//                     get_block(a,diagblock_mm,n,m,r,j);
+//                     mat_mult_sub(diagblock_mm,block_mm,invblock_mm,m,m,m);
+//                     set_block(a,diagblock_mm,n,m,r,j);
+//                 }
 
-                if (is_l!= 0) {
-                get_block_ml(a,tmpblock_ml,n,m,l,i);
-                get_block_ml(a,tmpblock_ml1,n,m,l,r);
-                mat_mult_sub(tmpblock_ml1,block_mm,tmpblock_ml,m,l,m);
-                set_block_ml(a,tmpblock_ml1,n,m,l,r);
-                }
-            }else
-            {
-                // printlxn(a,n,n,n,n);
-               get_block_lm(a, block_ml, n, m, l, i);
+//                 if (is_l!= 0) {
+//                 get_block_ml(a,tmpblock_ml,n,m,l,i);
+//                 get_block_ml(a,tmpblock_ml1,n,m,l,r);
+//                 mat_mult_sub(tmpblock_ml1,block_mm,tmpblock_ml,m,l,m);
+//                 set_block_ml(a,tmpblock_ml1,n,m,l,r);
+//                 }
+//             }else
+//             {
+//                 // printlxn(a,n,n,n,n);
+//                get_block_lm(a, block_ml, n, m, l, i);
 
-            //    printf("block_lm in col %d\n",i);
-            //    printlxn(block_ml,m,l,m,n);
+//             //    printf("block_lm in col %d\n",i);
+//             //    printlxn(block_ml,m,l,m,n);
 
-               get_block_lm(a, tmpblock_ml, n, m, l, i);
-               memset(tmpblock_ml,0,m*l*sizeof(double));
-               set_block_lm(a, tmpblock_ml, n, m, l, i);
+//                get_block_lm(a, tmpblock_ml, n, m, l, i);
+//                memset(tmpblock_ml,0,m*l*sizeof(double));
+//                set_block_lm(a, tmpblock_ml, n, m, l, i);
 
-               get_vec_block(b,vecb_m,n,m,i);// get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
-            //    cout<<"vecb_m in subtract i= "<<i<<" r="<<r<<endl;
-            //     printlxn(vecb_m,m,1,m,m);
-               get_vec_block(b,tmpvecb_l,n,m,r);// get_vec_block(b,tmpvecb_m,n,m,r);
-               vec_mult_sub_lm(tmpvecb_l,block_ml,vecb_m,l,m);// vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
-               set_vec_block(b,tmpvecb_l,n,m,r);  // set_vec_block(b,tmpvecb_m,n,m,r);
+//                get_vec_block(b,vecb_m,n,m,i);// get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
+//             //    cout<<"vecb_m in subtract i= "<<i<<" r="<<r<<endl;
+//             //     printlxn(vecb_m,m,1,m,m);
+//                get_vec_block(b,tmpvecb_l,n,m,r);// get_vec_block(b,tmpvecb_m,n,m,r);
+//                vec_mult_sub_lm(tmpvecb_l,block_ml,vecb_m,l,m);// vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
+//                set_vec_block(b,tmpvecb_l,n,m,r);  // set_vec_block(b,tmpvecb_m,n,m,r);
 
 
-                for(int j = i + 1; j < k; j++) {
-                get_block(a,tmpblock_mm,n,m,i,j);
-                get_block_lm(a, tmpblock_ml, n, m, l, j);
+//                 for(int j = i + 1; j < k; j++) {
+//                 get_block(a,tmpblock_mm,n,m,i,j);
+//                 get_block_lm(a, tmpblock_ml, n, m, l, j);
 
-                // cout<<"tmpblock_ml in col "<<j<<endl;
-                // printlxn(tmpblock_ml,m,l,m,m);
+//                 // cout<<"tmpblock_ml in col "<<j<<endl;
+//                 // printlxn(tmpblock_ml,m,l,m,m);
 
-                mat_mult_sub(tmpblock_ml,block_ml,tmpblock_mm,l,m,m);
+//                 mat_mult_sub(tmpblock_ml,block_ml,tmpblock_mm,l,m,m);
 
                 
-                // get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
-                // get_vec_block(b,tmpvecb_m,n,m,r);//
-                vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
-                set_block_lm(a, tmpblock_ml, n, m, l, j);
-                // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
-                }
+//                 // get_vec_block(b,vecb_m,n,m,i);//вычитание из вектора b block_mm*b
+//                 // get_vec_block(b,tmpvecb_m,n,m,r);//
+//                 vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
+//                 set_block_lm(a, tmpblock_ml, n, m, l, j);
+//                 // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
+//                 }
 
-                if (is_l != 0) {
-                    get_block_ml(a,tmpblock_ml,n,m,l,i);
-                    get_block(a,tmpblock_ll,n,m,k,k);
-                    mat_mult_sub(tmpblock_ll,block_ml,tmpblock_ml,l,l,m);
-                    set_block(a,tmpblock_ll,n,m,k,k);
-                }
+//                 if (is_l != 0) {
+//                     get_block_ml(a,tmpblock_ml,n,m,l,i);
+//                     get_block(a,tmpblock_ll,n,m,k,k);
+//                     mat_mult_sub(tmpblock_ll,block_ml,tmpblock_ml,l,l,m);
+//                     set_block(a,tmpblock_ll,n,m,k,k);
+//                 }
 
-            }
+//             }
             
-        }
+//         }
 
-        // cout<<"LAST PRINT"<<endl;
-        // printlxn(a,n,n,n,n);
-        // printlxn(b,n,1,n,n);
+//         // cout<<"LAST PRINT"<<endl;
+//         // printlxn(a,n,n,n,n);
+//         // printlxn(b,n,1,n,n);
          
         
-    }
+//     }
        
     
-    //начало обратного хода
+//     //начало обратного хода
         
 
-    // cout<<"colsw : "<<endl;
-    // for(int i = 0 ; i < k ; i++) cout<<colsw[i]<<" ";
+//     // cout<<"colsw : "<<endl;
+//     // for(int i = 0 ; i < k ; i++) cout<<colsw[i]<<" ";
 
 
-    for(int i = n-1; i >= 0 ; i--)
-    {
-        if(i == n-1) x[i] = b[i];
+//     for(int i = n-1; i >= 0 ; i--)
+//     {
+//         if(i == n-1) x[i] = b[i];
         
-        else
-        {
-            x[i] = b[i];
-            for(int j = n-1 ; j >i;j--)
-            {
-                x[i] -= a[i*n + j]*x[j];
-            }
-        }
-    }
+//         else
+//         {
+//             x[i] = b[i];
+//             for(int j = n-1 ; j >i;j--)
+//             {
+//                 x[i] -= a[i*n + j]*x[j];
+//             }
+//         }
+//     }
 
-    // cout<<"Vector x before swap :"<<endl;
-    // printlxn(x,n,1,n,n);
+//     // cout<<"Vector x before swap :"<<endl;
+//     // printlxn(x,n,1,n,n);
 
     
 
-    for(int i = 0 ; i < k ; i++)
-    {
+//     for(int i = 0 ; i < k ; i++)
+//     {
         
 
-        if(i != colsw[i]){ 
-            int t;
-            swap_block_vec(x,n,m,i,colsw[i]);
-            t = colsw[colsw[i]];
-            colsw[colsw[i]] = colsw[i];
-            colsw[i] = t; 
-        }
+//         if(i != colsw[i]){ 
+//             int t;
+//             swap_block_vec(x,n,m,i,colsw[i]);
+//             t = colsw[colsw[i]];
+//             colsw[colsw[i]] = colsw[i];
+//             colsw[i] = t; 
+//         }
 
 
-    }
+//     }
 
     
 
-    return 0;
+//     return 0;
 
-}
+// }
 
 
 
@@ -2614,6 +2614,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     int err{};
     // MPI_Status st;
     eps=eps;
+    int rows = get_rows(n,m,p,kk);
+    int b_rows = get_block_rows(n,m,p,kk);
 
 
     // printf("Printing my loc matrix proc %d:\n",kk);
@@ -2650,13 +2652,13 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         }
         
         main_block.norm = 1e64; // сюда будем класть 1/norm
-        main_block.num = -1; 
+        main_block.num = -1;
         
         if(i_glob_m != k_bl)
         {
             for(int j_loc_m = i_glob_m + kk; j_loc_m < k_bl; j_loc_m += p)
             {
-                get_block(buf,block_mm,n,m,0,j_loc_m);
+                get_block(buf,block_mm,n,m,0,j_loc_m,i_glob_m);
 
                 // printf("Block[%d,%d] proc %d owner %d in row %d\n",i_glob_m,j_loc_m,kk,owner,i_glob_m);
                 // printlxn(block_mm,m,m,m,m);
@@ -2675,7 +2677,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         else if (kk == last_owner && i_glob_m == k_bl && l!=0)//проверка [l,l] блока
         {
             // printf("Proc %d in ll block\n",kk);
-            get_block(buf,block_ll,n,m,0,k_bl);
+            get_block(buf,block_ll,n,m,0,k_bl,i_glob_m);
             // printf("Block[%d,%d] (l,l) proc %d owner %d in row %d\n",i_glob_m,k_bl,kk,owner,i_glob_m);
             // printlxn(block_ll,l,l,l,l);
             if(!inverse(invblock_ll,block_ll,l,eps))
@@ -2744,7 +2746,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
         if(i_glob_m < k_bl)
         {
-            get_block(buf,diagblock_mm,n,m,0,i_glob_m);
+            get_block(buf,diagblock_mm,n,m,0,i_glob_m,i_glob_m);
 
             if(!(inverse(diaginvblock_mm,diagblock_mm,m,eps)))
             {
@@ -2772,11 +2774,12 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
             for(int j_loc_m = i_glob_m + kk; j_loc_m < k_bl; j_loc_m += p)
             {
-                get_block(buf,block_mm,n,m,0,j_loc_m);
+                printf("\nJ_LOC_M = %d proc %d i_glob_m = %d\n",j_loc_m,kk,i_glob_m);
+                get_block(buf,block_mm,n,m,0,j_loc_m,i_glob_m);
 
                 multiplication(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// matmult(tmpblock_mm,diaginvblock_mm,block_mm,m,m,m);// double *resmult = matmult(diaginvblock_mm,block_mm,m,m,m)
 
-                set_block(buf,tmpblock_mm,n,m,0,j_loc_m);
+                set_block(buf,tmpblock_mm,n,m,0,j_loc_m,i_glob_m);
             }
 
             if(is_l != 0)
@@ -2789,7 +2792,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         }
         else if(kk == last_owner && i_glob_m == k_bl)
         {
-            get_block(buf,block_ll,n,m,0,i_glob_m);
+            get_block(buf,block_ll,n,m,0,i_glob_m,i_glob_m);
             get_vec_block(b,vecb_l,n,m,i_loc_m);
 
             if(!(inverse(invblock_ll,block_ll,l,eps)))
@@ -2804,7 +2807,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
             mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
 
-            set_block(buf,tmpblock_ll,n,m,0,i_glob_m);
+            set_block(buf,tmpblock_ll,n,m,0,i_glob_m,i_glob_m);
             set_vec_block(b,tmpvecb_l,n,m,i_loc_m);
             }
 
@@ -2812,10 +2815,13 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         MPI_Bcast(&err,1,MPI_INT,last_owner,MPI_COMM_WORLD);
         if(err) return err;
 
+
         
-        for(int j_loc_m = 0; j_loc_m < k_bl + is_l; j_loc_m ++)
+        
+        
+        for(int j_loc_m = i_glob_m; j_loc_m < k_bl + is_l; j_loc_m++)
         {
-            if(j_loc_m%p != kk)
+            if((j_loc_m + i_glob_m)%p != kk)
             {
                 int col0 = j_loc_m * m;
                 int size = (j_loc_m == k_bl ? l:m);
@@ -2824,6 +2830,21 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     memset(buf + ii*n + col0, 0, size * sizeof(double));
             }
         }
+
+        if(kk != owner)
+        {
+            printf("\nBEFORE ALLREDUCE Owner %d printing proc %d buf i_loc_m = %d i_glob_m = %d:\n",owner,kk,i_loc_m,i_glob_m);
+            for(int i = 0; i < p_m; i++)
+            {
+                for(int j = 0; j < n; j++)
+                {
+                printf(" %10.3e",buf[i*n+j]);
+                }
+                printf("\n");
+            }
+        }
+
+        
 
         MPI_Allreduce(buf,tmpbuf,p_m*n,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
         memcpy(buf, tmpbuf, p_m*n*sizeof(double));
@@ -2840,32 +2861,37 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         
         MPI_Bcast(resvec,m,MPI_DOUBLE,owner,MPI_COMM_WORLD);//правильно ли работае с ll?
 
-        printf("MY PART(proc %d i_glob_m = %d) OF VECTOR B: \n",kk,i_glob_m);
-        for(int i = 0; i < p_m; i++)
+        if(kk == owner)
         {
-            printf(" %10.3e",resvec[i]);
+            printf("MY PART(proc %d i_glob_m = %d) OF VECTOR B: \n",kk,i_glob_m);
+            for(int i = 0; i < p_m; i++)
+            {
+                printf(" %10.3e",resvec[i]);
+            }
+            printf("\n");
         }
-        printf("\n");
 
-        int rows = get_rows(n,m,p,kk);
+        
         
 
-        for(int ii_loc_m = 0; ii_loc_m < get_block_rows(n,m,p,kk); ii_loc_m++)
+        for(int ii_loc_m = 0; ii_loc_m < b_rows; ii_loc_m++)
         {
             int ii_glob_m = l2g_block(kk,p,ii_loc_m);
             // printf("\nii_glob_m = %d i_glom_m = %d proc %d\n",ii_glob_m,i_glob_m,kk); // правильно
 
             if(ii_glob_m <= i_glob_m) continue;//если номер локальной строки в глобальной нумерации <= текущего глобального номера то пропускаем
+            // printf("\nii_glob_m = %d i_glob_m = %d proc %d\n",ii_glob_m,i_glob_m,kk); // правильно
+
 
             if(ii_glob_m != k_bl )
             {
-                get_block(buf,block_mm,n,m,0,i_glob_m); // начал исправлять индексы
+                get_block(a,block_mm,n,m,ii_loc_m,i_glob_m,ii_glob_m); // начал исправлять индексы
                 // get_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
                 printf("\nproc %d take block_mm[%d,%d]\n",kk,ii_glob_m,i_glob_m);
                 printlxn(block_mm,m,m,m,m);
 
                 memset(tmpblock_mm,0, m*m*sizeof(double));
-                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m);
+                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m,ii_glob_m);
 
                 get_vec_block(resvec,vecb_m,n,m,0);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
                 get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
@@ -2874,10 +2900,10 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
                 for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
                 {
-                    get_block(buf,invblock_mm,n,m,0,j_loc_m);
-                    get_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m);
+                    get_block(buf,invblock_mm,n,m,0,j_loc_m,ii_glob_m);
+                    get_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m,ii_glob_m);
                     mat_mult_sub(diagblock_mm,block_mm,invblock_mm,m,m,m);
-                    set_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m);
+                    set_block(a,diagblock_mm,n,m,ii_loc_m,j_loc_m,ii_glob_m);
                 }
 
                 if (is_l!= 0) 
@@ -2892,12 +2918,16 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             else if(kk == last_owner && ii_glob_m == k_bl && l!=0)
             {
                 
-                get_block_lm(a, block_ml,rows, m, l, ii_loc_m);
+                get_block_lm(a, block_ml,rows,n, m, l, i_glob_m);
 
 
                 // get_block_lm(a, tmpblock_ml, rows, m, l, i_loc_m);
                 memset(tmpblock_ml,0,m*l*sizeof(double));
-                set_block_lm(a, tmpblock_ml, rows, m, l, ii_loc_m);
+                set_block_lm(a, tmpblock_ml,rows, n, m, l, i_glob_m);
+
+                // printf("block_lm in col %d(global)  proc %d\n",i_glob_m,kk);
+                // printlxn(block_ml,m,l,m,n);
+                // printf("\n");
 
                 get_vec_block(resvec,vecb_m,n,m,0);
 
@@ -2907,15 +2937,24 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 
                 for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
                 {
-                    get_block(buf,tmpblock_mm,n,m,0,j_loc_m);
-                    get_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
+                    get_block(buf,tmpblock_mm,n,m,0,j_loc_m,i_glob_m);
+                    get_block_lm(a, tmpblock_ml,rows,n, m, l, j_loc_m);
+
+                    // printf("tmpblock_ml(lxm) in col %d proc %d\n",j_loc_m,kk);
+                    // printlxn(tmpblock_ml,m,l,m,m);
+                    // printf("\n");
                     
                     mat_mult_sub(tmpblock_ml,block_ml,tmpblock_mm,l,m,m);
+
+                    // printf("AFTER REDUCE tmpblock_ml(lxm) in col %d proc %d\n",j_loc_m,kk);
+                    // printlxn(tmpblock_ml,m,l,m,m);
+                    // printf("\n");
+                    //good
 
 
                     get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);//
                     vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
-                    set_block_lm(a, tmpblock_ml, rows, m, l, j_loc_m);
+                    set_block_lm(a, tmpblock_ml, rows, n,m, l, j_loc_m);
                     // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
 
 
@@ -2924,9 +2963,9 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 if (is_l != 0)
                 {
                     get_block_ml(buf,tmpblock_ml,n,m,l,0);
-                    get_block(a,tmpblock_ll,n,m,k_bl-1,k_bl-1);
+                    get_block(a,tmpblock_ll,n,m,b_rows-1,k_bl,ii_glob_m);
                     mat_mult_sub(tmpblock_ll,block_ml,tmpblock_ml,l,l,m);
-                    set_block(a,tmpblock_ll,n,m,k_bl-1,k_bl-1);
+                    set_block(a,tmpblock_ll,n,m,b_rows-1,k_bl,ii_glob_m);
                     //переделать get_block и все его версии
                 }
             }
@@ -2941,6 +2980,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         
 
     }//end straight algo
+
+    //start reverse algo
     
 
     return 0;

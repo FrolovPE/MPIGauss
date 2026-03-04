@@ -43,8 +43,8 @@ void residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx
 void mpi_residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx,int n,int m,int p, int k, double *Ax, double *Ax_b, double *x_realx,MPI_Comm com);
 void report(char *title, int task, double r1, double r2 ,double t1,  double t2 ,int s, int n , int m,int p );
 void matmult(double *res,double *a, double *b, int n, int m,int l);
-void get_block(double *a, double *b, int n, int m, int i, int j);
-void set_block(double *a, double *b, int n, int m, int i, int j);
+void get_block(double *a, double *b, int n, int m, int i_loc_m, int j_loc_m,int i_glob_m);
+void set_block(double *a, double *b, int n, int m, int i_loc_m, int j_loc_m,int i_glob_m);
 double normofmatrix(double *a , int size);
 double* inverse(double *result,const double* A, int size,double eps);
 double* inverse1(const double* a_in, int n,const double eps );
@@ -56,8 +56,8 @@ void mat_mult_sub(double* Result, double* Block_A, double* Block_B, const int ro
 void set_vec_block(double *b,double *block,int n, int m, int i);
 void get_block_ml(double *a, double *b, int n, int m,int l, int i);
 void set_block_ml(double *a, double *b, int n, int m,int l, int i);
-void get_block_lm(double *a, double *b, int n, int m,int l, int j);
-void set_block_lm(double *a, double *b, int n, int m,int l, int j);
+void get_block_lm(double *a, double *b,int locrows, int n, int m,int l, int j);
+void set_block_lm(double *a, double *b,int locrows, int n, int m,int l, int j);
 void matsub(double *res,double *a, double *b, int m,int l);
 void vec_eq(double *x, double *b, int m);
 void vec_sub(double *x, double *b, int m);
