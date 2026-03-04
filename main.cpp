@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     {
         int i_glob = l2g(m,kk,p,i_loc);
         realx[i_loc] = (i_glob+1)%2;
-        x[i_loc] = (i_glob+1)%2; // for template, later comment
+        x[i_loc] = 0; // for template, later comment
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -242,6 +242,7 @@ int main(int argc, char *argv[])
     //print vector x
     if(kk == main_kk) printf("Soulution vector x:\n");
     print_vector(x,n,m,p,kk,vecbuf,r,MPI_COMM_WORLD);
+    if(kk == main_kk) printf("\n");
     
     
     
