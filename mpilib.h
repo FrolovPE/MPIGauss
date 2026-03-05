@@ -49,7 +49,7 @@ double normofmatrix(double *a , int size);
 double* inverse(double *result,const double* A, int size,double eps);
 double* inverse1(const double* a_in, int n,const double eps );
 void blocksize(int i, int j,int n,int m, int &r, int &h);
-void swap_block_columns(double *a, int n,int m, int i, int j);
+void swap_block_columns(double *a, int n,int m,int rows, int i, int j);
 void swap_block_vec(double *a, int n,int m, int i, int j);
 void get_vec_block(double *b,double *block,int n, int m, int i);
 void mat_mult_sub(double* Result, double* Block_A, double* Block_B, const int row_A, const int col_B, const int col_row);

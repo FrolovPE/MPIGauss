@@ -84,16 +84,27 @@ int main(int argc, char *argv[])
    
 
     
-    int loc_block_rows = get_block_rows(n,m,p,kk);
+    // int loc_block_rows = get_block_rows(n,m,p,kk);
     // loc_block_rows=loc_block_rows;
     int loc_rows = get_rows(n,m,p,kk);
-    printf("block rows in %d proc %d\n",kk,loc_block_rows);
+    // printf("block rows in %d proc %d\n",kk,loc_block_rows);
     
     // printf("a[%d,%d] = %10.3e\n",k,0,a[k*n+0]);
-    a = new double[n*loc_rows]; //create matrix a
-    b = new double[loc_rows];  // create vector b
-    x = new double[loc_rows];  // create vector x
-    realx = new double[loc_rows];  // create vector real x
+    if(loc_rows > 0)
+    {
+        a = new double[n*loc_rows]; //create matrix a
+        b = new double[loc_rows];  // create vector b
+        x = new double[loc_rows];  // create vector x
+        realx = new double[loc_rows];  // create vector real x
+    }
+    else
+    {
+        a = new double[get_max_block_rows(n,m,p)*m*n]; //create matrix a
+        b = new double[get_max_block_rows(n,m,p)*m];  // create vector b
+        x = new double[get_max_block_rows(n,m,p)*m];  // create vector x
+        realx = new double[get_max_block_rows(n,m,p)*m];  // create vector real x
+    }
+
     buf = new double[n*m]; //block row
     vecbuf = new double[m]; // block vector
     resvec = new double[m];
@@ -169,6 +180,8 @@ int main(int argc, char *argv[])
     /*static*/ int *colsw = new int[k];
     double *tmpbuf = new double[n*m];
 
+    for(int i = 0; i < k; i++) colsw[i] = i;
+
     double elapsed = get_full_time();
 
     auto start_sol= std::chrono::high_resolution_clock::now();
@@ -204,6 +217,7 @@ int main(int argc, char *argv[])
         delete []tmpvecb_l ; 
         delete []colsw ;
         r1 = -1; r2 = -1;
+        printf("\nPROC %d OUT\n",kk);
         if(kk == main_kk) report(argv[0],task,r1,r2,t1,t2,s,n,m,p); // r1 = -1; r2 = -1;
         MPI_Finalize();
         return 0;
@@ -212,6 +226,7 @@ int main(int argc, char *argv[])
     elapsed = get_full_time() - elapsed;
     printf("CPU Time proc %d = %.2lf\n",kk,elapsed);
 
+    auto end_sol= std::chrono::high_resolution_clock::now();
 
     delete []block_mm ;
     delete []block_ml ;
@@ -231,7 +246,7 @@ int main(int argc, char *argv[])
     delete []colsw ;
     
 
-    auto end_sol= std::chrono::high_resolution_clock::now();
+    
 
     
 
@@ -240,10 +255,37 @@ int main(int argc, char *argv[])
     
 
     //print vector x
-    if(kk == main_kk) printf("Soulution vector x:\n");
+    // if(kk == main_kk) 
+        
+    // {
+    //     printf("Soulution vector1 x:\n");
+    //     for(int i = 0; i < min(n,r); i++)
+    //         printf(" %10.3e",tmpbuf[i]);
+    //     printf("\n\n");
+        
+    // }
+    // MPI_Bcast(&r,1,MPI_INT,main_kk,MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(kk == main_kk)  printf("Soulution vector x:\n");
     print_vector(x,n,m,p,kk,vecbuf,r,MPI_COMM_WORLD);
     if(kk == main_kk) printf("\n");
+        
     
+    if(argc == 5) init_matrix(a,n,m,p,kk,&f,s);
+    else if (argc == 6) read_matrix(a,n,m,p,kk,filename,buf,MPI_COMM_WORLD);
+    init_vector_b(a,b,n,m,p,kk);
+        
+    
+
+    // if(kk == main_kk) printf("Matrix A:\n");
+    // print_matrix(a,n,m,p,kk,buf,r,MPI_COMM_WORLD);
+    // if(kk == main_kk) printf("\n\n");
+
+    // if(kk == main_kk) printf("Vector b:\n");
+    // init_vector_b(a,b,n,m,p,kk);
+    // print_vector(b,n,m,p,kk,vecbuf,r,MPI_COMM_WORLD);
+    // if(kk == main_kk) printf("\n\n");
     
     
 
