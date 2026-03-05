@@ -589,16 +589,16 @@ void swap_block_vec(double *a, int n,int m, int i, int j)
                
 }
 
-void get_vec_block(double *b,double *block,int n, int m, int i)
+void get_vec_block(double *b,double *block,int n, int m, int i_loc_m,int i_glob_m)
 {
     int i1=0, k, l, r;
     k = n/m; l = n - m*k ;
-    if(i < k) r = m;
+    if(i_glob_m < k) r = m;
     else r = l;
 
     for (i1 =0 ; i1 < r ; i1++)
     {
-            block[i1] = b[i*m+i1];
+            block[i1] = b[i_loc_m*m+i1];
     }
     
 
@@ -723,11 +723,11 @@ void mat_mult_sub(double* Result, double* Block_A, double* Block_B, const int ro
     }
 }
 
-void set_vec_block(double *b,double *block,int n, int m, int i)
+void set_vec_block(double *b,double *block,int n, int m, int i_loc_m,int i_glob_m)
 {
     int i1=0, k, l, r;
     k = n/m; l = n - m*k ;
-    if(i < k) r = m;
+    if(i_glob_m < k) r = m;
     else r = l;
 
     
@@ -737,7 +737,7 @@ void set_vec_block(double *b,double *block,int n, int m, int i)
 
     for (i1 =0 ; i1 < r ; i1++)
     {
-            b[i*m+i1]=block[i1] ;
+            b[i_loc_m*m+i1]=block[i1] ;
     }
     
 
@@ -2704,12 +2704,14 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         {    
             if((fabs(main_block.norm - 1e64) < eps))
             {   
+                
                 if(i_glob_m != 0)
                 {
                     printf("No inverse matrix in row %d after the transformations in proc %d\n",i_glob_m,owner);
                     // cout<<"\n MATRIX A :\n";
                     // printlxn(a,n,n,n,r);
-                    err = 1;
+                    err = -1;
+                    
                 }
                 else
                     printf("No inverse matrix in row %d\n",i_glob_m);
@@ -2718,8 +2720,10 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 err = -1;
             }
         }
-        MPI_Bcast(&err,1,MPI_INT,main_kk,MPI_COMM_WORLD);
-        if(err) return err;
+
+        if (main_block.num < 0) return -1;
+        // MPI_Bcast(&err,1,MPI_INT,main_kk,MPI_COMM_WORLD);
+        // if(err) return err;
 
         if(main_block.num != i_glob_m && i_glob_m < k_bl)
         {
@@ -2767,11 +2771,11 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
             if(kk == owner)
             {
-                get_vec_block(b,vecb_m,n,m,i_loc_m);//надо подумать как переписать чтоб было корректно (ещё не тестил в исх виде)
+                get_vec_block(b,vecb_m,n,m,i_loc_m,i_glob_m);//надо подумать как переписать чтоб было корректно (ещё не тестил в исх виде)
                 mat_x_vector(tmpvecb_m,diaginvblock_mm,vecb_m,m);// double *resvec = mat_x_vector(diaginvblock_mm,vecb_m,m);
                 // printf("tmpvecb_m proc %d row %d: \n",kk,i_glob_m);
                 // printlxn(tmpvecb_m,m,1,m,m);    
-                set_vec_block(b,tmpvecb_m,n,m,i_loc_m);
+                set_vec_block(b,tmpvecb_m,n,m,i_loc_m,i_glob_m);
                 // printf("VECTOR B:\n");
                 // for(int i = 0; i < get_rows(n,m,p,kk); i++)
                 // {
@@ -2800,7 +2804,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         else if(kk == last_owner && i_glob_m == k_bl)
         {
             get_block(buf,block_ll,n,m,0,i_glob_m,i_glob_m);
-            get_vec_block(b,vecb_l,n,m,i_loc_m);
+            get_vec_block(b,vecb_l,n,m,i_loc_m,i_glob_m);
 
             if(!(inverse(invblock_ll,block_ll,l,eps)))
             {
@@ -2815,7 +2819,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             mat_x_vector(tmpvecb_l,invblock_ll,vecb_l,l);
 
             set_block(buf,tmpblock_ll,n,m,0,i_glob_m,i_glob_m);
-            set_vec_block(b,tmpvecb_l,n,m,i_loc_m);
+            set_vec_block(b,tmpvecb_l,n,m,i_loc_m,i_glob_m);
             }
 
         }
@@ -2900,10 +2904,10 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 memset(tmpblock_mm,0, m*m*sizeof(double));
                 set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m,ii_glob_m);
 
-                get_vec_block(resvec,vecb_m,n,m,0);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
-                get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+                get_vec_block(resvec,vecb_m,n,m,0,i_glob_m);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
+                get_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);
                 vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
-                set_vec_block(b,tmpvecb_m,n,m,ii_loc_m);
+                set_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);
 
                 for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
                 {
@@ -2936,11 +2940,11 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 // printlxn(block_ml,m,l,m,n);
                 // printf("\n");
 
-                get_vec_block(resvec,vecb_m,n,m,0);
+                get_vec_block(resvec,vecb_m,n,m,0,i_glob_m);
 
-                get_vec_block(b,tmpvecb_l,n,m,ii_loc_m);
+                get_vec_block(b,tmpvecb_l,n,m,ii_loc_m,ii_glob_m);
                 vec_mult_sub_lm(tmpvecb_l,block_ml,vecb_m,l,m);// vec_mult_sub(tmpvecb_m,block_mm,vecb_m,m);
-                set_vec_block(b,tmpvecb_l,n,m,ii_loc_m);  // set_vec_block(b,tmpvecb_m,n,m,r);
+                set_vec_block(b,tmpvecb_l,n,m,ii_loc_m,ii_glob_m);  // set_vec_block(b,tmpvecb_m,n,m,r);
                 
                 for(int j_loc_m = i_glob_m + 1; j_loc_m < k_bl; j_loc_m++)
                 {
@@ -2959,7 +2963,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     //good
 
 
-                    get_vec_block(b,tmpvecb_m,n,m,ii_loc_m);//
+                    get_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);//
                     vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
                     set_block_lm(a, tmpblock_ml, rows, n,m, l, j_loc_m);
                     // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
@@ -2989,7 +2993,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     }//end straight algo(вроде всё работает)
 
     //start reverse algo
-    memset(tmpbuf,0,n*sizeof(double));
+    memset(tmpbuf,0,m*n*sizeof(double));
 
     for(int i_glob_m = k_bl + is_l - 1; i_glob_m >= 0; i_glob_m--)
     {
@@ -3042,7 +3046,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
         // printf(" %d",colsw[i]);
         if (colsw[i] != i )
         {
-            swap_block_columns(tmpbuf,n,m,m,i,colsw[i]);
+            swap_block_columns(tmpbuf,n,m,1,i,colsw[i]);
             swap(colsw[i],colsw[colsw[i]]);
         }
     }

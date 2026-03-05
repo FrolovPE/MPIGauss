@@ -90,6 +90,8 @@ int main(int argc, char *argv[])
     // printf("block rows in %d proc %d\n",kk,loc_block_rows);
     
     // printf("a[%d,%d] = %10.3e\n",k,0,a[k*n+0]);
+    int max_b_rows = get_max_block_rows(n,m,p);
+
     if(loc_rows > 0)
     {
         a = new double[n*loc_rows]; //create matrix a
@@ -99,10 +101,10 @@ int main(int argc, char *argv[])
     }
     else
     {
-        a = new double[get_max_block_rows(n,m,p)*m*n]; //create matrix a
-        b = new double[get_max_block_rows(n,m,p)*m];  // create vector b
-        x = new double[get_max_block_rows(n,m,p)*m];  // create vector x
-        realx = new double[get_max_block_rows(n,m,p)*m];  // create vector real x
+        a = new double[max_b_rows*m*n]; //create matrix a
+        b = new double[max_b_rows*m];  // create vector b
+        x = new double[max_b_rows*m];  // create vector x
+        realx = new double[max_b_rows*m];  // create vector real x
     }
 
     buf = new double[n*m]; //block row
@@ -217,7 +219,7 @@ int main(int argc, char *argv[])
         delete []tmpvecb_l ; 
         delete []colsw ;
         r1 = -1; r2 = -1;
-        printf("\nPROC %d OUT\n",kk);
+        // printf("\nPROC %d OUT\n",kk);
         if(kk == main_kk) report(argv[0],task,r1,r2,t1,t2,s,n,m,p); // r1 = -1; r2 = -1;
         MPI_Finalize();
         return 0;
@@ -291,12 +293,20 @@ int main(int argc, char *argv[])
 
     auto start_res= std::chrono::high_resolution_clock::now();
 
-    
+    double *Ax,*Ax_b,*x_realx;
 
-
-    double *Ax = new double[loc_rows];//mat_x_vector(a,x,n);
-    double *Ax_b = new double[loc_rows];//vectorsub( Ax , b, n);
-    double *x_realx = new double[loc_rows];//vectorsub( x , realx, n);
+    if(loc_rows > 0)
+    {
+        Ax= new double[loc_rows];//mat_x_vector(a,x,n);
+        Ax_b = new double[loc_rows];//vectorsub( Ax , b, n);
+        x_realx = new double[loc_rows];//vectorsub( x , realx, n);
+    }
+    else
+    {
+        Ax = new double[max_b_rows*m];//mat_x_vector(a,x,n);
+        Ax_b = new double[max_b_rows*m];//vectorsub( Ax , b, n);
+        x_realx = new double[max_b_rows*m];//vectorsub( x , realx, n);
+    }
 
     // for(int i = 0 ; i < n; i++)
     //     realx[i] = (i+1)%2;
@@ -332,6 +342,8 @@ int main(int argc, char *argv[])
     delete []tmpbuf;
     delete []vecbuf;
     delete []resvec;
+
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
 
