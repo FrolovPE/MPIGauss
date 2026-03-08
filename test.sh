@@ -4,12 +4,13 @@
 # sleep 3
 
 
-if [ $# != 2 ]; then
-	echo "Usage: test.sh <executable(./a.out or a.out)> <dir(example matr/ , '/' is must have )>"
+if [ $# != 3 ]; then
+	echo "Usage: test.sh <executable(./a.out or a.out)> <p> <dir(example matr/ , '/' is must have )>"
 else
 	
 	 exe=$1
-	 dir=$2
+	 p=$2
+	 dir=$3
 
 	
 
@@ -52,7 +53,7 @@ else
 				 echo $i
 				 		
 						for((k = 1; k <= 6 ; k++)); do
-							for((q = 1 ; q <=4; q++)); do
+							for((q = 1 ; q <=$p; q++)); do
 						echo "------------------------------------------------------------------------"
 						echo "mpirun -np $q $exe 6 $k 6 0 $i"
 		                 mpirun -np $q $exe 6 $k 6 0 $i
@@ -63,7 +64,7 @@ else
 		             echo ""
 		             echo $i
 						for((k = 1; k <= 4 ; k++)); do
-                                                        for((q = 1 ; q <=4; q++)); do
+                                                        for((q = 1 ; q <=$p; q++)); do
                                                 echo "------------------------------------------------------------------------"
                                 		 	echo "mpirun -np $q $exe 4 $k 4 0 $i"
                                 			 mpirun -np $q $exe 4 $k 4 0 $i

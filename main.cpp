@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
     }
 
     elapsed = get_full_time() - elapsed;
-    printf("CPU Time proc %d = %.2lf\n",kk,elapsed);
+    if(kk == main_kk) printf("CPU Time proc %d = %.2lf\n",kk,elapsed);
 
     auto end_sol= std::chrono::high_resolution_clock::now();
 
@@ -293,30 +293,30 @@ int main(int argc, char *argv[])
 
     auto start_res= std::chrono::high_resolution_clock::now();
 
-    double *Ax,*Ax_b,*x_realx;
+    double *Ax/*,*Ax_b,*x_realx*/;
 
     if(loc_rows > 0)
     {
         Ax= new double[loc_rows];//mat_x_vector(a,x,n);
-        Ax_b = new double[loc_rows];//vectorsub( Ax , b, n);
-        x_realx = new double[loc_rows];//vectorsub( x , realx, n);
+        // Ax_b = new double[loc_rows];//vectorsub( Ax , b, n);
+        // x_realx = new double[loc_rows];//vectorsub( x , realx, n);
     }
     else
     {
         Ax = new double[max_b_rows*m];//mat_x_vector(a,x,n);
-        Ax_b = new double[max_b_rows*m];//vectorsub( Ax , b, n);
-        x_realx = new double[max_b_rows*m];//vectorsub( x , realx, n);
+        // Ax_b = new double[max_b_rows*m];//vectorsub( Ax , b, n);
+        // x_realx = new double[max_b_rows*m];//vectorsub( x , realx, n);
     }
 
     // for(int i = 0 ; i < n; i++)
     //     realx[i] = (i+1)%2;
     
 
-    mpi_residuals(r1,r2,a,b,x,realx,n,m,p,kk,Ax,Ax_b,x_realx,MPI_COMM_WORLD);
+    mpi_residuals(r1,r2,a,b,x,realx,n,m,p,kk,Ax,MPI_COMM_WORLD);
 
     delete []Ax;
-    delete []Ax_b;
-    delete []x_realx;
+    // delete []Ax_b;
+    // delete []x_realx;
     
 
     auto end_res= std::chrono::high_resolution_clock::now();

@@ -1,11 +1,12 @@
 #!/bin/bash
 
-if [ $# != 3 ]; then
-	echo "Usage: supertest.sh <a.out> <r> <n(до какого n делать тесты)>"
+if [ $# != 4 ]; then
+	echo "Usage: supertest.sh <a.out> <r> <n(до какого n делать тесты) <p>"
 else
     exe=$1
     r=$2
     n=$3
+    p=$4
     
     if [ -f $exe ];then
     echo
@@ -20,7 +21,7 @@ else
 
             for ((k=1; k<4;k++)); do
 
-		for ((q = 1; q <=4 ; q++)); do
+		for ((q = 1; q <=$p ; q++)); do
 		    echo "= mpirun -np $q $exe $i $j $r $k ="	
                     echo "=============================== N = $i ==== M = $j ==== P = $q ==== S = $k ========================"
                     mpirun -np $q $exe $i $j $r $k

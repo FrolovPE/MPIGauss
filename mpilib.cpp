@@ -222,12 +222,12 @@ void residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx
     
 }
 
-void mpi_residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx,int n,int m,int p, int k, double *Ax, double *Ax_b, double *x_realx,MPI_Comm com)
+void mpi_residuals(double &r1,double &r2,double *a,double *b,double *x,double *realx,int n,int m,int p, int k, double *Ax,MPI_Comm com)
 {
     int lrows = get_rows(n,m,p,k);
     memset(Ax,0,lrows*sizeof(double));
-    memset(Ax_b,0,lrows*sizeof(double));
-    memset(x_realx,0,lrows*sizeof(double));
+    // memset(Ax_b,0,lrows*sizeof(double));
+    // memset(x_realx,0,lrows*sizeof(double));
     /*dopisat' */matrix_mult_vector(a,x,Ax,n,m,k,p,com);// mat_x_vector(Ax,a,x,n);// double *Ax = mat_x_vector(a,x,n);
     // vectorsub(Ax_b,Ax,b,n);// double *Ax_b = vectorsub( Ax , b, n);
     // vectorsub(x_realx,x,realx,n);// double *x_realx = vectorsub( x , realx, n);
@@ -247,7 +247,7 @@ void mpi_residuals(double &r1,double &r2,double *a,double *b,double *x,double *r
     MPI_Allreduce(&ln1,&n1,1,MPI_DOUBLE,MPI_SUM,com);
     MPI_Allreduce(&ln2,&n2,1,MPI_DOUBLE,MPI_SUM,com);
     MPI_Allreduce(&ld1,&d1,1,MPI_DOUBLE,MPI_SUM,com);
-    MPI_Allreduce(&ld2,&d1,1,MPI_DOUBLE,MPI_SUM,com);
+    MPI_Allreduce(&ld2,&d2,1,MPI_DOUBLE,MPI_SUM,com);
 
     r1 = (d1 > 0) ? n1/d1:0;
     r2 = (d2>0) ? n2/d2:0;
@@ -2743,7 +2743,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
             // printlxn(buf,n,m,rows,n);
             // printf("\n");
             swap(colsw[i_glob_m],colsw[main_block.num]);
-            if(kk == main_kk) printf("swapped %d %d in row %d\n",i_glob_m,main_block.num,i_glob_m);
+            // if(kk == main_kk) printf("swapped %d %d in row %d\n",i_glob_m,main_block.num,i_glob_m);
         }
         else if(main_block.num == -1 && i_glob_m < k_bl)
         {
