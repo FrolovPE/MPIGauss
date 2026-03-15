@@ -20,8 +20,9 @@ int main(int argc, char *argv[])
     // feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
 
 
-
+    // printf("BEFORE INIT:\n");
     MPI_Init(&argc,&argv);
+    
 
     int p;
     // MPI_Comm com;
@@ -30,6 +31,8 @@ int main(int argc, char *argv[])
     // MPI_Comm_create()
     MPI_Comm_size(MPI_COMM_WORLD,&p);
     MPI_Comm_rank(MPI_COMM_WORLD,&kk);
+
+    // if(kk == main_kk) printf("AFTER INIT:\n");
 
     
     // MPI_Barrier(MPI_COMM_WORLD);
@@ -96,8 +99,8 @@ int main(int argc, char *argv[])
     {
         a = new double[n*loc_rows]; //create matrix a
         b = new double[loc_rows];  // create vector b
-        x = new double[loc_rows];  // create vector x
-        realx = new double[loc_rows];  // create vector real x
+        x = new double[max_b_rows*m];  // create vector x
+        realx = new double[max_b_rows*m];  // create vector real x
     }
     else
     {
