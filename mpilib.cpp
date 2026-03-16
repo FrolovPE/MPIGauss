@@ -1592,8 +1592,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                 // printf("\nproc %d take block_mm[%d,%d]\n",kk,ii_glob_m,i_glob_m);
                 // printlxn(block_mm,m,m,m,m);
 
-                memset(tmpblock_mm,0, m*m*sizeof(double));
-                set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m,ii_glob_m);
+                // memset(tmpblock_mm,0, m*m*sizeof(double));
+                // set_block(a,tmpblock_mm,n,m,ii_loc_m,i_glob_m,ii_glob_m);
 
                 get_vec_block(resvec,vecb_m,n,m,0,i_glob_m);//resvec должны переслать часть вектора b из owner всем //вычитание из вектора b block_mm*b
                 get_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);
@@ -1624,8 +1624,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
 
 
                 // get_block_lm(a, tmpblock_ml, rows, m, l, i_loc_m);
-                memset(tmpblock_ml,0,m*l*sizeof(double));
-                set_block_lm(a, tmpblock_ml,rows, n, m, l, i_glob_m);
+                // memset(tmpblock_ml,0,m*l*sizeof(double));
+                // set_block_lm(a, tmpblock_ml,rows, n, m, l, i_glob_m);
 
                 // printf("block_lm in col %d(global)  proc %d\n",i_glob_m,kk);
                 // printlxn(block_ml,m,l,m,n);
@@ -1654,8 +1654,8 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
                     //good
 
 
-                    get_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);//
-                    vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
+                    // get_vec_block(b,tmpvecb_m,n,m,ii_loc_m,ii_glob_m);//
+                    // vec_mult_sub_lm(tmpvecb_m,block_ml,vecb_m,l,m);//
                     set_block_lm(a, tmpblock_ml, rows, n,m, l, j_loc_m);
                     // set_vec_block(b,tmpvecb_m,n,m,r);//set_vec...
 
@@ -1684,7 +1684,7 @@ int MPI_Solve(double *a, double *b, double *x,int n,int m,int p,int kk,
     }//end straight algo(вроде всё работает)
 
     //start reverse algo
-    memset(tmpbuf,0,m*n*sizeof(double));
+    memset(tmpbuf,0,n*sizeof(double));
 
     for(int i_glob_m = k_bl + is_l - 1; i_glob_m >= 0; i_glob_m--)
     {
